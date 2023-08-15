@@ -56,10 +56,11 @@ def load_extension(name, sources, extra_cflags=None, extra_cuda_cflags=None, **k
             extra_cuda_cflags = ["-O3"]
             extra_cflags.append("-DCUDA_OP")
         else:
-            new_sources = []
-            for source in sources:
-                if not cpp_extension._is_cuda_file(source):
-                    new_sources.append(source)
+            new_sources = [
+                source
+                for source in sources
+                if not cpp_extension._is_cuda_file(source)
+            ]
             sources = new_sources
 
     return LazyExtensionLoader(name, sources, extra_cflags, extra_cuda_cflags, **kwargs)
@@ -76,7 +77,7 @@ def cpu(obj, *args, **kwargs):
     elif isinstance(obj, Sequence):
         return type(obj)(cpu(x, *args, **kwargs) for x in obj)
 
-    raise TypeError("Can't transfer object type `%s`" % type(obj))
+    raise TypeError(f"Can't transfer object type `{type(obj)}`")
 
 
 def cuda(obj, *args, **kwargs):
@@ -90,7 +91,7 @@ def cuda(obj, *args, **kwargs):
     elif isinstance(obj, Sequence):
         return type(obj)(cuda(x, *args, **kwargs) for x in obj)
 
-    raise TypeError("Can't transfer object type `%s`" % type(obj))
+    raise TypeError(f"Can't transfer object type `{type(obj)}`")
 
 
 def detach(obj):
@@ -104,7 +105,7 @@ def detach(obj):
     elif isinstance(obj, Sequence):
         return type(obj)(detach(x) for x in obj)
 
-    raise TypeError("Can't perform detach over object type `%s`" % type(obj))
+    raise TypeError(f"Can't perform detach over object type `{type(obj)}`")
 
 
 def clone(obj, *args, **kwargs):
@@ -118,7 +119,7 @@ def clone(obj, *args, **kwargs):
     elif isinstance(obj, Sequence):
         return type(obj)(clone(x, *args, **kwargs) for x in obj)
 
-    raise TypeError("Can't perform detach over object type `%s`" % type(obj))
+    raise TypeError(f"Can't perform detach over object type `{type(obj)}`")
 
 
 def mean(obj, *args, **kwargs):
@@ -132,7 +133,7 @@ def mean(obj, *args, **kwargs):
     elif isinstance(obj, Sequence):
         return type(obj)(mean(x, *args, **kwargs) for x in obj)
 
-    raise TypeError("Can't perform mean over object type `%s`" % type(obj))
+    raise TypeError(f"Can't perform mean over object type `{type(obj)}`")
 
 
 def cat(objs, *args, **kwargs):
@@ -149,7 +150,7 @@ def cat(objs, *args, **kwargs):
     elif isinstance(obj, Sequence):
         return type(obj)(cat(xs, *args, **kwargs) for xs in zip(*objs))
 
-    raise TypeError("Can't perform concatenation over object type `%s`" % type(obj))
+    raise TypeError(f"Can't perform concatenation over object type `{type(obj)}`")
 
 
 def stack(objs, *args, **kwargs):
@@ -164,7 +165,7 @@ def stack(objs, *args, **kwargs):
     elif isinstance(obj, Sequence):
         return type(obj)(stack(xs, *args, **kwargs) for xs in zip(*objs))
 
-    raise TypeError("Can't perform stack over object type `%s`" % type(obj))
+    raise TypeError(f"Can't perform stack over object type `{type(obj)}`")
 
 
 def sparse_coo_tensor(indices, values, size):

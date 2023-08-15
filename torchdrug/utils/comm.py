@@ -18,9 +18,7 @@ def get_rank():
     """
     if dist.is_initialized():
         return dist.get_rank()
-    if "RANK" in os.environ:
-        return int(os.environ["RANK"])
-    return 0
+    return int(os.environ["RANK"]) if "RANK" in os.environ else 0
 
 
 def get_world_size():
@@ -31,9 +29,7 @@ def get_world_size():
     """
     if dist.is_initialized():
         return dist.get_world_size()
-    if "WORLD_SIZE" in os.environ:
-        return int(os.environ["WORLD_SIZE"])
-    return 1
+    return int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
 
 
 def get_group(device):
@@ -45,8 +41,9 @@ def get_group(device):
     """
     group = cpu_group if device.type == "cpu" else gpu_group
     if group is None:
-        raise ValueError("%s group is not initialized. Use comm.init_process_group() to initialize it"
-                         % device.type.upper())
+        raise ValueError(
+            f"{device.type.upper()} group is not initialized. Use comm.init_process_group() to initialize it"
+        )
     return group
 
 
@@ -63,10 +60,7 @@ def init_process_group(backend, init_method=None, **kwargs):
 
     dist.init_process_group(backend, init_method, **kwargs)
     gpu_group = dist.group.WORLD
-    if backend == "nccl":
-        cpu_group = dist.new_group(backend="gloo")
-    else:
-        cpu_group = gpu_group
+    cpu_group = dist.new_group(backend="gloo") if backend == "nccl" else gpu_group
 
 
 def get_cpu_count():
@@ -97,7 +91,7 @@ def _recursive_read(obj):
                 values[k] += v
             for k, v in child_sizes.items():
                 sizes[k] += v
-    elif isinstance(obj, list) or isinstance(obj, tuple):
+    elif isinstance(obj, (list, tuple)):
         for v in obj:
             child_values, child_sizes = _recursive_read(v)
             for k, v in child_values.items():
@@ -105,7 +99,7 @@ def _recursive_read(obj):
             for k, v in child_sizes.items():
                 sizes[k] += v
     else:
-        raise ValueError("Unknown type `%s`" % type(obj))
+        raise ValueError(f"Unknown type `{type(obj)}`")
     return values, sizes
 
 
@@ -127,13 +121,13 @@ def _recursive_write(obj, values, sizes=None):
         new_obj = {}
         for k, v in obj.items():
             new_obj[k], values = _recursive_write(v, values, sizes)
-    elif isinstance(obj, list) or isinstance(obj, tuple):
+    elif isinstance(obj, (list, tuple)):
         new_obj = []
         for v in obj:
             new_v, values = _recursive_write(v, values, sizes)
             new_obj.append(new_v)
     else:
-        raise ValueError("Unknown type `%s`" % type(obj))
+        raise ValueError(f"Unknown type `{type(obj)}`")
     return new_obj, values
 
 

@@ -24,8 +24,8 @@ class SplitTest(unittest.TestCase):
 
     def test_scaffold(self):
         train, test = data.scaffold_split(self.dataset, self.lengths)
-        train_scaffolds = set(sample["graph"].to_scaffold() for sample in train)
-        test_scaffolds = set(sample["graph"].to_scaffold() for sample in test)
+        train_scaffolds = {sample["graph"].to_scaffold() for sample in train}
+        test_scaffolds = {sample["graph"].to_scaffold() for sample in test}
         self.assertEqual(len(train_scaffolds), 1, "Incorrect scaffold split")
         self.assertEqual(len(test_scaffolds), 1, "Incorrect scaffold split")
         self.assertFalse(train_scaffolds.intersection(test_scaffolds), "Incorrect scaffold split")

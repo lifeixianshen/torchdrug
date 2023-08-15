@@ -25,23 +25,18 @@ bond_stereo_vocab = range(len(Chem.rdchem.BondStereo.values))
 
 def onehot(x, vocab, allow_unknown=False):
     if x in vocab:
-        if isinstance(vocab, dict):
-            index = vocab[x]
-        else:
-            index = vocab.index(x)
+        index = vocab[x] if isinstance(vocab, dict) else vocab.index(x)
     else:
         index = -1
     if allow_unknown:
         feature = [0] * (len(vocab) + 1)
         if index == -1:
-            warnings.warn("Unknown value `%s`" % x)
-        feature[index] = 1
+            warnings.warn(f"Unknown value `{x}`")
     else:
         feature = [0] * len(vocab)
         if index == -1:
-            raise ValueError("Unknown value `%s`. Available vocabulary is `%s`" % (x, vocab))
-        feature[index] = 1
-
+            raise ValueError(f"Unknown value `{x}`. Available vocabulary is `{vocab}`")
+    feature[index] = 1
     return feature
 
 

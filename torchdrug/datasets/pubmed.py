@@ -43,7 +43,13 @@ class PubMed(data.NodeClassificationDataset):
         with open(node_file, "r") as fin:
             reader = csv.reader(fin, delimiter="\t")
             if verbose:
-                reader = iter(tqdm(reader, "Loading %s" % node_file, utils.get_line_count(node_file)))
+                reader = iter(
+                    tqdm(
+                        reader,
+                        f"Loading {node_file}",
+                        utils.get_line_count(node_file),
+                    )
+                )
             _ = next(reader)
             fields = next(reader)
             group, = re.match(r"cat=(\S+):label", fields[0]).groups()
@@ -77,7 +83,13 @@ class PubMed(data.NodeClassificationDataset):
         with open(edge_file, "r") as fin:
             reader = csv.reader(fin, delimiter="\t")
             if verbose:
-                reader = iter(tqdm(reader, "Loading %s" % edge_file, utils.get_line_count(edge_file)))
+                reader = iter(
+                    tqdm(
+                        reader,
+                        f"Loading {edge_file}",
+                        utils.get_line_count(edge_file),
+                    )
+                )
             _ = next(reader)
             _ = next(reader)
             for tokens in reader:

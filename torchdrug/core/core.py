@@ -47,11 +47,7 @@ class _MetaContainer(object):
     enable_auto_context = False
 
     def __init__(self, meta_dict=None, **kwargs):
-        if meta_dict is None:
-            meta_dict = {}
-        else:
-            meta_dict = meta_dict.copy()
-
+        meta_dict = {} if meta_dict is None else meta_dict.copy()
         self._setattr("_meta_context", None)
         self._setattr("meta_dict", meta_dict)
         for k, v in kwargs.items():
@@ -63,7 +59,9 @@ class _MetaContainer(object):
         Context manager for assigning members with a specific meta type.
         """
         if type is not None and self._meta_types and type not in self._meta_types:
-            raise ValueError("Expect context type in %s, but got `%s`" % (self._meta_types, type))
+            raise ValueError(
+                f"Expect context type in {self._meta_types}, but got `{type}`"
+            )
         backup = self._meta_context
         self._setattr("_meta_context", type)
         yield
@@ -137,10 +135,7 @@ class Tree(defaultdict):
         super(Tree, self).__init__(Tree)
 
     def flatten(self, prefix=None, result=None):
-        if prefix is None:
-            prefix = ""
-        else:
-            prefix = prefix + "."
+        prefix = "" if prefix is None else f"{prefix}."
         if result is None:
             result = {}
         for k, v in self.items():
@@ -187,7 +182,7 @@ class Registry(object):
             for key in keys[:-1]:
                 entry = entry[key]
             if keys[-1] in entry:
-                raise KeyError("`%s` has already been registered by %s" % (name, entry[keys[-1]]))
+                raise KeyError(f"`{name}` has already been registered by {entry[keys[-1]]}")
 
             entry[keys[-1]] = obj
             obj._registry_key = name
@@ -205,7 +200,7 @@ class Registry(object):
         keys = name.split(".")
         for i, key in enumerate(keys):
             if key not in entry:
-                raise KeyError("Can't find `%s` in `%s`" % (key, ".".join(keys[:i])))
+                raise KeyError(f"""Can't find `{key}` in `{".".join(keys[:i])}`""")
             entry = entry[key]
         return entry
 
@@ -222,11 +217,11 @@ class Registry(object):
             if pattern.search(k):
                 keys.append(k)
                 value = v
-        if len(keys) == 0:
-            raise KeyError("Can't find any registered key containing `%s`" % name)
+        if not keys:
+            raise KeyError(f"Can't find any registered key containing `{name}`")
         if len(keys) > 1:
-            keys = ["`%s`" % key for key in keys]
-            raise KeyError("Ambiguous key `%s`. Found %s" % (name, ", ".join(keys)))
+            keys = [f"`{key}`" for key in keys]
+            raise KeyError(f'Ambiguous key `{name}`. Found {", ".join(keys)}')
         return value
 
 
@@ -251,7 +246,9 @@ class _Configurable(type):
                 return real_cls.load_config_dict(config)
             cls = real_cls
         elif getattr(cls, "_registry_key", cls.__name__) != config["class"]:
-            raise ValueError("Expect config class to be `%s`, but found `%s`" % (cls.__name__, config["class"]))
+            raise ValueError(
+                f'Expect config class to be `{cls.__name__}`, but found `{config["class"]}`'
+            )
 
         new_config = {}
         for k, v in config.items():
@@ -282,16 +279,14 @@ class _Configurable(type):
             return init(self, *args, **kwargs)
 
         def get_function(method):
-            if isinstance(method, types.MethodType):
-                return method.__func__
-            return method
+            return method.__func__ if isinstance(method, types.MethodType) else method
 
         if isinstance(cls.__init__, types.FunctionType):
             cls.__init__ = wrapper(cls.__init__)
             custom_load_func = hasattr(cls, "load_config_dict") and \
-                          get_function(cls.load_config_dict) != get_function(typ.load_config_dict)
+                              get_function(cls.load_config_dict) != get_function(typ.load_config_dict)
             custom_config_func = hasattr(cls, "config_dict") and \
-                                 get_function(cls.config_dict) != get_function(typ.config_dict)
+                                     get_function(cls.config_dict) != get_function(typ.config_dict)
             if not custom_load_func:
                 cls.load_config_dict = _Configurable.load_config_dict
             if not custom_config_func:

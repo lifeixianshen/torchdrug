@@ -27,8 +27,7 @@ def area_under_roc(pred, target):
     target = target[order]
     hit = target.cumsum(0)
     all = (target == 0).sum() * (target == 1).sum()
-    auroc = hit[target == 0].sum() / (all + 1e-10)
-    return auroc
+    return hit[target == 0].sum() / (all + 1e-10)
 
 
 @R.register("metrics.auprc")
@@ -43,8 +42,7 @@ def area_under_prc(pred, target):
     order = pred.argsort(descending=True)
     target = target[order]
     precision = target.cumsum(0) / torch.arange(1, len(target) + 1, device=target.device)
-    auprc = precision[target == 1].sum() / ((target == 1).sum() + 1e-10)
-    return auprc
+    return precision[target == 1].sum() / ((target == 1).sum() + 1e-10)
 
 
 @R.register("metrics.r2")
@@ -101,9 +99,8 @@ def penalized_logP(pred):
 
     plogp = []
     for mol in pred:
-        cycles = nx.cycle_basis(nx.Graph(mol.edge_list[:, :2].tolist()))
-        if cycles:
-            max_cycle = max([len(cycle) for cycle in cycles])
+        if cycles := nx.cycle_basis(nx.Graph(mol.edge_list[:, :2].tolist())):
+            max_cycle = max(len(cycle) for cycle in cycles)
             cycle = max(0, max_cycle - 6)
         else:
             cycle = 0
@@ -171,7 +168,7 @@ def chemical_validity(pred):
         pred (PackedMolecule): molecules to evaluate
     """
     validity = []
-    for i, mol in enumerate(pred):
+    for mol in pred:
         with utils.no_rdkit_log():
             smiles = mol.to_smiles()
             mol = Chem.MolFromSmiles(smiles)
@@ -195,5 +192,4 @@ def variadic_accuracy(input, target, size):
 
     input_class = scatter_max(input, index2graph)[1]
     target_index = target + size.cumsum(0) - size
-    accuracy = (input_class == target_index).float()
-    return accuracy
+    return (input_class == target_index).float()

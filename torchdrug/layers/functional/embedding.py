@@ -136,15 +136,15 @@ def transe_score(entity, relation, h_index, t_index, r_index):
         t_index (LongTensor): index of tail entities
         r_index (LongTensor): index of relations
     """
-    if backend == "native":
+    if backend == "fast":
+        score = TransEFunction.apply(entity, relation, h_index, t_index, r_index)
+    elif backend == "native":
         h = entity[h_index]
         r = relation[r_index]
         t = entity[t_index]
         score = (h + r - t).norm(p=1, dim=-1)
-    elif backend == "fast":
-        score = TransEFunction.apply(entity, relation, h_index, t_index, r_index)
     else:
-        raise ValueError("Unknown embedding backend `%s`" % backend)
+        raise ValueError(f"Unknown embedding backend `{backend}`")
     return score
 
 
@@ -162,15 +162,15 @@ def distmult_score(entity, relation, h_index, t_index, r_index):
         t_index (LongTensor): index of tail entities
         r_index (LongTensor): index of relations
     """
-    if backend == "native":
+    if backend == "fast":
+        score = DistMultFunction.apply(entity, relation, h_index, t_index, r_index)
+    elif backend == "native":
         h = entity[h_index]
         r = relation[r_index]
         t = entity[t_index]
         score = (h * r * t).sum(dim=-1)
-    elif backend == "fast":
-        score = DistMultFunction.apply(entity, relation, h_index, t_index, r_index)
     else:
-        raise ValueError("Unknown embedding backend `%s`" % backend)
+        raise ValueError(f"Unknown embedding backend `{backend}`")
     return score
 
 
@@ -188,7 +188,9 @@ def complex_score(entity, relation, h_index, t_index, r_index):
         t_index (LongTensor): index of tail entities
         r_index (LongTensor): index of relations
     """
-    if backend == "native":
+    if backend == "fast":
+        score = ComplExFunction.apply(entity, relation, h_index, t_index, r_index)
+    elif backend == "native":
         h = entity[h_index]
         r = relation[r_index]
         t = entity[t_index]
@@ -201,10 +203,8 @@ def complex_score(entity, relation, h_index, t_index, r_index):
         x_im = h_re * r_im + h_im * r_re
         x = x_re * t_re + x_im * t_im
         score = x.sum(dim=-1)
-    elif backend == "fast":
-        score = ComplExFunction.apply(entity, relation, h_index, t_index, r_index)
     else:
-        raise ValueError("Unknown embedding backend `%s`" % backend)
+        raise ValueError(f"Unknown embedding backend `{backend}`")
     return score
 
 
@@ -222,16 +222,16 @@ def simple_score(entity, relation, h_index, t_index, r_index):
         t_index (LongTensor): index of tail entities
         r_index (LongTensor): index of relations
     """
-    if backend == "native":
+    if backend == "fast":
+        score = SimplEFunction.apply(entity, relation, h_index, t_index, r_index)
+    elif backend == "native":
         h = entity[h_index]
         r = relation[r_index]
         t = entity[t_index]
         t_flipped = torch.cat(t.chunk(2, dim=-1)[::-1], dim=-1)
         score = (h * r * t_flipped).sum(dim=-1)
-    elif backend == "fast":
-        score = SimplEFunction.apply(entity, relation, h_index, t_index, r_index)
     else:
-        raise ValueError("Unknown embedding backend `%s`" % backend)
+        raise ValueError(f"Unknown embedding backend `{backend}`")
     return score
 
 
@@ -249,7 +249,9 @@ def rotate_score(entity, relation, h_index, t_index, r_index):
         t_index (LongTensor): index of tail entities
         r_index (LongTensor): index of relations
     """
-    if backend == "native":
+    if backend == "fast":
+        score = RotatEFunction.apply(entity, relation, h_index, t_index, r_index)
+    elif backend == "native":
         h = entity[h_index]
         r = relation[r_index]
         t = entity[t_index]
@@ -262,8 +264,6 @@ def rotate_score(entity, relation, h_index, t_index, r_index):
         x_im = h_re * r_im + h_im * r_re - t_im
         x = torch.stack([x_re, x_im], dim=-1)
         score = x.norm(p=2, dim=-1).sum(dim=-1)
-    elif backend == "fast":
-        score = RotatEFunction.apply(entity, relation, h_index, t_index, r_index)
     else:
-        raise ValueError("Unknown embedding backend `%s`" % backend)
+        raise ValueError(f"Unknown embedding backend `{backend}`")
     return score

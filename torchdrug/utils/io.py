@@ -15,8 +15,8 @@ def input_choice(prompt, choice=("y", "n")):
          prompt (str): prompt string
          choice (tuple of str, optional): candidate choices
     """
-    prompt = "%s (%s)" % (prompt, "/".join(choice))
-    choice = set([c.lower() for c in choice])
+    prompt = f'{prompt} ({"/".join(choice)})'
+    choice = {c.lower() for c in choice}
     result = input(prompt)
     while result.lower() not in choice:
         result = input(prompt)

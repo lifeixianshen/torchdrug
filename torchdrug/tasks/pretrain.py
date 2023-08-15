@@ -45,8 +45,9 @@ class EdgePrediction(tasks.Task, core.Configurable):
         node_in = torch.cat([node_in, neg_index[0]])
         node_out = torch.cat([node_out, neg_index[1]])
 
-        pred = torch.einsum("bd, bd -> b", node_feature[node_in], node_feature[node_out])
-        return pred
+        return torch.einsum(
+            "bd, bd -> b", node_feature[node_in], node_feature[node_out]
+        )
 
     def target(self, batch):
         graph = batch["graph"]
@@ -55,13 +56,10 @@ class EdgePrediction(tasks.Task, core.Configurable):
         return target
 
     def evaluate(self, pred, target):
-        metric = {}
         accuracy = ((pred > 0) == (target > 0.5)).float().mean()
 
         name = tasks._get_metric_name("acc")
-        metric[name] = accuracy
-
-        return metric
+        return {name: accuracy}
 
     def forward(self, batch):
         """"""
@@ -73,7 +71,7 @@ class EdgePrediction(tasks.Task, core.Configurable):
         loss = F.binary_cross_entropy_with_logits(pred, target)
         name = tasks._get_criterion_name("bce")
         metric[name] = loss
-        metric.update(self.evaluate(pred, target))
+        metric |= self.evaluate(pred, target)
 
         all_loss += loss
 
@@ -123,13 +121,10 @@ class AttributeMasking(tasks.Task, core.Configurable):
         return pred, target
 
     def evaluate(self, pred, target):
-        metric = {}
         accuracy = (pred.argmax(dim=-1) == target).float().mean()
 
         name = tasks._get_metric_name("acc")
-        metric[name] = accuracy
-
-        return metric
+        return {name: accuracy}
 
     def forward(self, batch):
         """"""
@@ -137,7 +132,7 @@ class AttributeMasking(tasks.Task, core.Configurable):
         metric = {}
 
         pred, target = self.predict_and_target(batch, all_loss, metric)
-        metric.update(self.evaluate(pred, target))
+        metric |= self.evaluate(pred, target)
 
         loss = F.cross_entropy(pred, target)
         name = tasks._get_criterion_name("ce")
@@ -189,7 +184,7 @@ class ContextPrediction(tasks.Task, core.Configurable):
         elif readout == "mean":
             self.readout = layers.MeanReadout()
         else:
-            raise ValueError("Unknown readout `%s`" % readout)
+            raise ValueError(f"Unknown readout `{readout}`")
 
     def substruct_and_context(self, graph):
         center_index = (torch.rand(len(graph), device=self.device) * graph.num_nodes).long()
@@ -199,7 +194,7 @@ class ContextPrediction(tasks.Task, core.Configurable):
 
         # single source shortest path
         node_in, node_out = graph.edge_list.t()[:2]
-        for i in range(self.r2):
+        for _ in range(self.r2):
             new_dist = scatter_min(dist[node_in], node_out, dim_size=graph.num_node)[0] + 1
             dist = torch.min(dist, new_dist)
 
@@ -247,13 +242,10 @@ class ContextPrediction(tasks.Task, core.Configurable):
         return pred, target
 
     def evaluate(self, pred, target):
-        metric = {}
         accuracy = ((pred > 0) == (target > 0.5)).float().mean()
 
         name = tasks._get_metric_name("acc")
-        metric[name] = accuracy
-
-        return metric
+        return {name: accuracy}
 
     def forward(self, batch):
         """"""
@@ -261,7 +253,7 @@ class ContextPrediction(tasks.Task, core.Configurable):
         metric = {}
 
         pred, target = self.predict_and_target(batch, all_loss, metric)
-        metric.update(self.evaluate(pred, target))
+        metric |= self.evaluate(pred, target)
 
         loss = F.binary_cross_entropy_with_logits(pred, target)
         name = tasks._get_criterion_name("bce")

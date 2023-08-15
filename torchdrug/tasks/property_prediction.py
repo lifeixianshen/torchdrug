@@ -73,7 +73,7 @@ class PropertyPrediction(tasks.Task, core.Configurable):
 
         pred = self.predict(batch, all_loss, metric)
 
-        if all([t not in batch for t in self.task]):
+        if all(t not in batch for t in self.task):
             # unlabeled data
             return all_loss, metric
 
@@ -82,18 +82,18 @@ class PropertyPrediction(tasks.Task, core.Configurable):
         target[~labeled] = 0
 
         for criterion, weight in self.criterion.items():
-            if criterion == "mse":
-                loss = F.mse_loss(pred, (target - self.mean) / self.std, reduction="none")
-            elif criterion == "bce":
+            if criterion == "bce":
                 loss = F.binary_cross_entropy_with_logits(pred, target, reduction="none")
+            elif criterion == "mse":
+                loss = F.mse_loss(pred, (target - self.mean) / self.std, reduction="none")
             else:
-                raise ValueError("Unknown criterion `%s`" % criterion)
+                raise ValueError(f"Unknown criterion `{criterion}`")
             loss = functional.masked_mean(loss, labeled, dim=0)
 
             name = tasks._get_criterion_name(criterion)
             if self.verbose > 0:
                 for t, l in zip(self.task, loss):
-                    metric["%s [%s]" % (name, t)] = l
+                    metric[f"{name} [{t}]"] = l
             loss = (loss * self.weight).sum() / self.weight.sum()
             metric[name] = loss
             all_loss += loss * weight
@@ -103,8 +103,7 @@ class PropertyPrediction(tasks.Task, core.Configurable):
     def predict(self, batch, all_loss=None, metric=None):
         graph = batch["graph"]
         output = self.model(graph, graph.node_feature.float(), all_loss=all_loss, metric=metric)
-        pred = self.linear(output["graph_feature"])
-        return pred
+        return self.linear(output["graph_feature"])
 
     def target(self, batch):
         target = torch.stack([batch[t].float() for t in self.task], dim=-1)
@@ -143,11 +142,11 @@ class PropertyPrediction(tasks.Task, core.Configurable):
                     score.append(_score)
                 score = torch.stack(score)
             else:
-                raise ValueError("Unknown criterion `%s`" % _metric)
+                raise ValueError(f"Unknown criterion `{_metric}`")
 
             name = tasks._get_metric_name(_metric)
             for t, s in zip(self.task, score):
-                metric["%s [%s]" % (name, t)] = s
+                metric[f"{name} [{t}]"] = s
 
         return metric
 
@@ -177,5 +176,6 @@ class Unsupervised(nn.Module):
 
     def predict(self, batch, all_loss=None, metric=None):
         graph = batch["graph"]
-        pred = self.model(graph, graph.node_feature.float(), all_loss=all_loss, metric=metric)
-        return pred
+        return self.model(
+            graph, graph.node_feature.float(), all_loss=all_loss, metric=metric
+        )

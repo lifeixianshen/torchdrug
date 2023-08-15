@@ -35,10 +35,7 @@ class MessagePassingNeuralNetwork(nn.Module, core.Configurable):
 
         self.input_dim = input_dim
         self.edge_input_dim = edge_input_dim
-        if concat_hidden:
-            feature_dim = hidden_dim * num_layer
-        else:
-            feature_dim = hidden_dim
+        feature_dim = hidden_dim * num_layer if concat_hidden else hidden_dim
         self.output_dim = feature_dim * 2
         self.num_layer = num_layer
         self.short_cut = short_cut
@@ -69,7 +66,7 @@ class MessagePassingNeuralNetwork(nn.Module, core.Configurable):
         layer_input = self.linear(input)
         hx = layer_input.repeat(self.gru.num_layers, 1, 1)
 
-        for i in range(self.num_layer):
+        for _ in range(self.num_layer):
             x = self.layer(graph, layer_input)
             hidden, hx = self.gru(x.unsqueeze(0), hx)
             hidden = hidden.squeeze(0)

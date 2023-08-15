@@ -40,7 +40,7 @@ class FB15k(data.KnowledgeGraphDataset):
 
         txt_files = []
         for url, md5 in zip(self.urls, self.md5s):
-            save_file = "fb15k_%s" % os.path.basename(url)
+            save_file = f"fb15k_{os.path.basename(url)}"
             txt_file = utils.download(url, self.path, save_file=save_file, md5=md5)
             txt_files.append(txt_file)
 
@@ -90,7 +90,7 @@ class FB15k237(data.KnowledgeGraphDataset):
 
         txt_files = []
         for url, md5 in zip(self.urls, self.md5s):
-            save_file = "fb15k237_%s" % os.path.basename(url)
+            save_file = f"fb15k237_{os.path.basename(url)}"
             txt_file = utils.download(url, self.path, save_file=save_file, md5=md5)
             txt_files.append(txt_file)
 

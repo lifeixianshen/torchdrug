@@ -50,9 +50,11 @@ class PatchedModule(nn.Module):
                 tensors.append(input_tensor)
             try:
                 state_dict[prefix + name] = data.Graph.from_tensors(tensors)
-                print("successfully assigned %s" % (prefix + name))
+                print(f"successfully assigned {prefix + name}")
             except:
-                error_msgs.append("Can't construct Graph `%s` from tensors in the state dict" % key)
+                error_msgs.append(
+                    f"Can't construct Graph `{key}` from tensors in the state dict"
+                )
         return state_dict
 
     @property
@@ -68,18 +70,17 @@ class PatchedModule(nn.Module):
             raise AttributeError(
                 "cannot assign buffer before Module.__init__() call")
         elif not isinstance(name, torch._six.string_classes):
-            raise TypeError("buffer name should be a string. "
-                            "Got {}".format(torch.typename(name)))
+            raise TypeError(f"buffer name should be a string. Got {torch.typename(name)}")
         elif '.' in name:
             raise KeyError("buffer name can't contain \".\"")
         elif name == '':
             raise KeyError("buffer name can't be empty string \"\"")
         elif hasattr(self, name) and name not in self._buffers:
-            raise KeyError("attribute '{}' already exists".format(name))
+            raise KeyError(f"attribute '{name}' already exists")
         elif tensor is not None and not isinstance(tensor, torch.Tensor) and not isinstance(tensor, data.Graph):
-            raise TypeError("cannot assign '{}' object to buffer '{}' "
-                            "(torch.Tensor, torchdrug.data.Graph or None required)"
-                            .format(torch.typename(tensor), name))
+            raise TypeError(
+                f"cannot assign '{torch.typename(tensor)}' object to buffer '{name}' (torch.Tensor, torchdrug.data.Graph or None required)"
+            )
         else:
             self._buffers[name] = tensor
 
@@ -87,13 +88,9 @@ class PatchedModule(nn.Module):
 class PatchedDistributedDataParallel(nn.parallel.DistributedDataParallel):
 
     def _distributed_broadcast_coalesced(self, tensors, buffer_size, *args, **kwargs):
-        new_tensors = []
-        for tensor in tensors:
-            # do not broadcast graphs
-            # assume graphs are already init by each process
-            if isinstance(tensor, torch.Tensor):
-                new_tensors.append(tensor)
-        if new_tensors:
+        if new_tensors := [
+            tensor for tensor in tensors if isinstance(tensor, torch.Tensor)
+        ]:
             dist._broadcast_coalesced(self.process_group, new_tensors, buffer_size, *args, **kwargs)
 
 
@@ -103,15 +100,14 @@ def _get_build_directory(name, verbose):
         root_extensions_directory = cpp_extension.get_default_build_root()
 
     if verbose:
-        print('Using {} as PyTorch extensions root...'.format(
-            root_extensions_directory))
+        print(f'Using {root_extensions_directory} as PyTorch extensions root...')
 
     build_directory = os.path.join(root_extensions_directory, name)
     if not os.path.exists(build_directory):
         if verbose:
-            print('Creating extension directory {}...'.format(build_directory))
+            print(f'Creating extension directory {build_directory}...')
         # This is like mkdir -p, i.e. will also create parent directories.
-        baton = cpp_extension.FileBaton("lock_%s" % name)
+        baton = cpp_extension.FileBaton(f"lock_{name}")
         if baton.try_acquire():
             os.makedirs(build_directory)
             baton.release()
@@ -134,23 +130,23 @@ cpp_extension._get_build_directory = _get_build_directory
 Optimizer = optim.Optimizer
 for name, cls in inspect.getmembers(optim):
     if inspect.isclass(cls) and issubclass(cls, Optimizer):
-        setattr(optim, "_%s" % name, cls)
+        setattr(optim, f"_{name}", cls)
         cls = core.make_configurable(cls, ignore_args=("params",))
-        cls = R.register("optim.%s" % name)(cls)
+        cls = R.register(f"optim.{name}")(cls)
         setattr(optim, name, cls)
 
 Scheduler = scheduler._LRScheduler
 for name, cls in inspect.getmembers(scheduler):
     if inspect.isclass(cls) and issubclass(cls, Scheduler):
-        setattr(scheduler, "_%s" % name, cls)
+        setattr(scheduler, f"_{name}", cls)
         cls = core.make_configurable(cls, ignore_args=("optimizer",))
-        cls = R.register("scheduler.%s" % name)(cls)
+        cls = R.register(f"scheduler.{name}")(cls)
         setattr(optim, name, cls)
 
 Dataset = dataset.Dataset
 for name, cls in inspect.getmembers(dataset):
     if inspect.isclass(cls) and issubclass(cls, Dataset):
-        setattr(dataset, "_%s" % name, cls)
+        setattr(dataset, f"_{name}", cls)
         cls = core.make_configurable(cls)
-        cls = R.register("dataset.%s" % name)(cls)
+        cls = R.register(f"dataset.{name}")(cls)
         setattr(dataset, name, cls)

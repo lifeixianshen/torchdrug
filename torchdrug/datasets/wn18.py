@@ -40,7 +40,7 @@ class WN18(data.KnowledgeGraphDataset):
 
         txt_files = []
         for url, md5 in zip(self.urls, self.md5s):
-            save_file = "wn18_%s" % os.path.basename(url)
+            save_file = f"wn18_{os.path.basename(url)}"
             txt_file = utils.download(url, self.path, save_file=save_file, md5=md5)
             txt_files.append(txt_file)
 
@@ -90,7 +90,7 @@ class WN18RR(data.KnowledgeGraphDataset):
 
         txt_files = []
         for url, md5 in zip(self.urls, self.md5s):
-            save_file = "wn18rr_%s" % os.path.basename(url)
+            save_file = f"wn18rr_{os.path.basename(url)}"
             txt_file = utils.download(url, self.path, save_file=save_file, md5=md5)
             txt_files.append(txt_file)
 

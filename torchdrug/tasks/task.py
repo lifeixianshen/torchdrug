@@ -15,7 +15,7 @@ class Task(nn.Module):
         elif isinstance(x, Sequence):
             x = dict.fromkeys(x, 1)
         elif not isinstance(x, Mapping):
-            raise ValueError("Invalid value `%s` for option member `%s`" % (x, name))
+            raise ValueError(f"Invalid value `{x}` for option member `{name}`")
         return x
 
     def __setattr__(self, key, value):

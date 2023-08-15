@@ -120,13 +120,13 @@ class AutoregressiveGeneration(tasks.Task, core.Configurable):
             if criterion == "nll":
                 _loss, _metric = self.density_estimation_forward(batch)
                 all_loss += _loss * weight
-                metric.update(_metric)
+                metric |= _metric
             elif criterion == "ppo":
                 _loss, _metric = self.reinforce_forward(batch)
                 all_loss += _loss * weight
                 metric.update(_metric)
             else:
-                raise ValueError("Unknown criterion `%s`" % criterion)
+                raise ValueError(f"Unknown criterion `{criterion}`")
 
         return all_loss, metric
 
@@ -155,7 +155,7 @@ class AutoregressiveGeneration(tasks.Task, core.Configurable):
                 reward += (plogp / self.reward_temperature).exp()
 
                 if plogp.max().item() > 5:
-                    print("Penalized logP max = %s" % plogp.max().item())
+                    print(f"Penalized logP max = {plogp.max().item()}")
                     print(self.best_results["Penalized logP"])
 
             elif task == "qed":
@@ -167,11 +167,11 @@ class AutoregressiveGeneration(tasks.Task, core.Configurable):
                 #reward += qed * 3
 
                 if qed.max().item() > 0.93:
-                    print("QED max = %s" % qed.max().item())
+                    print(f"QED max = {qed.max().item()}")
                     print(self.best_results["QED"])
 
             else:
-                raise ValueError("Unknown task `%s`" % task)
+                raise ValueError(f"Unknown task `{task}`")
 
         # these graph-level features will broadcast to all masked graphs
         with graph.graph():
@@ -192,7 +192,7 @@ class AutoregressiveGeneration(tasks.Task, core.Configurable):
         # per graph size reward baseline
         weight = torch.ones_like(masked_graph.num_nodes, dtype=torch.float)
         baseline = scatter_add(reward, masked_graph.num_nodes, dim_size=self.max_node + 1) / \
-                   (scatter_add(weight, masked_graph.num_nodes, dim_size=self.max_node + 1) + self.eps)
+                       (scatter_add(weight, masked_graph.num_nodes, dim_size=self.max_node + 1) + self.eps)
         self.node_baseline = self.node_baseline * self.baseline_momentum + baseline * (1 - self.baseline_momentum)
         reward -= self.node_baseline[masked_graph.num_nodes]
         reward += masked_graph.is_valid
@@ -214,7 +214,7 @@ class AutoregressiveGeneration(tasks.Task, core.Configurable):
         # per graph size reward baseline
         weight = torch.ones_like(masked_graph.num_nodes, dtype=torch.float)
         baseline = scatter_add(reward, masked_graph.num_nodes, dim_size=self.max_node + 1) / \
-                   (scatter_add(weight, masked_graph.num_nodes, dim_size=self.max_node + 1) + self.eps)
+                       (scatter_add(weight, masked_graph.num_nodes, dim_size=self.max_node + 1) + self.eps)
         self.edge_baseline = self.edge_baseline * self.baseline_momentum + baseline * (1 - self.baseline_momentum)
         reward -= self.edge_baseline[masked_graph.num_nodes]
         reward += masked_graph.is_valid
@@ -252,13 +252,10 @@ class AutoregressiveGeneration(tasks.Task, core.Configurable):
 
     def evaluate(self, batch):
         pred = None
-        metric = {}
-
         graph, target = self.all_node(batch["graph"])
         log_likelihood = self.node_model(graph, target)
         log_likelihood = log_likelihood.mean()
-        metric["node log likelihood"] = log_likelihood
-
+        metric = {"node log likelihood": log_likelihood}
         graph, target = self.all_edge(batch["graph"])
         log_likelihood = self.edge_model(graph, target)
         log_likelihood = log_likelihood.mean()
@@ -324,7 +321,7 @@ class AutoregressiveGeneration(tasks.Task, core.Configurable):
                 edge = torch.tensor([node_in, node_out], device=self.device).repeat(num_sample, 1)
                 # default: non-edge
                 bond_pred = (self.num_bond_type - 1) * torch.ones(num_sample, dtype=torch.long, device=self.device)
-                for i in range(max_resample):
+                for _ in range(max_resample):
                     # only resample invalid graphs
                     mask = ~is_valid
                     bond_pred[mask] = edge_model.sample(graph, edge)[mask]
@@ -697,13 +694,13 @@ class GCPNGeneration(tasks.Task, core.Configurable):
             if criterion == "nll":
                 _loss, _metric = self.MLE_forward(batch)
                 all_loss += _loss * weight
-                metric.update(_metric)
+                metric |= _metric
             elif criterion == "ppo":
                 _loss, _metric = self.reinforce_forward(batch)
                 all_loss += _loss * weight
                 metric.update(_metric)
             else:
-                raise ValueError("Unknown criterion `%s`" % criterion)
+                raise ValueError(f"Unknown criterion `{criterion}`")
 
         return all_loss, metric
 
@@ -727,7 +724,7 @@ class GCPNGeneration(tasks.Task, core.Configurable):
         else:
             stop_logits = self.agent_mlp_stop(stop_feature) #(num_graph, 2)
 
-        if label_dict == None:
+        if label_dict is None:
             return stop_logits
         # step3: predict first node: node1
         node1_feature = output["node_feature"] #(num_node, n_out)
@@ -818,7 +815,7 @@ class GCPNGeneration(tasks.Task, core.Configurable):
                 reward += (plogp / self.reward_temperature).exp()
 
                 if plogp.max().item() > 5:
-                    print("Penalized logP max = %s" % plogp.max().item())
+                    print(f"Penalized logP max = {plogp.max().item()}")
                     print(self.best_results["Penalized logP"])
 
             elif task == "qed":
@@ -834,10 +831,10 @@ class GCPNGeneration(tasks.Task, core.Configurable):
 
 
                 if qed.max().item() > 0.93:
-                    print("QED max = %s" % qed.max().item())
+                    print(f"QED max = {qed.max().item()}")
                     print(self.best_results["QED"])
             else:
-                raise ValueError("Unknown task `%s`" % task)
+                raise ValueError(f"Unknown task `{task}`")
 
         # these graph-level features will broadcast to all masked graphs
         with graph.graph():
@@ -869,7 +866,7 @@ class GCPNGeneration(tasks.Task, core.Configurable):
         # per graph size reward baseline
         weight = torch.ones_like(graph.num_nodes, dtype=torch.float)
         baseline = scatter_add(reward, graph.num_nodes, dim_size=self.max_node + 1) / \
-                   (scatter_add(weight, graph.num_nodes, dim_size=self.max_node + 1) + self.eps)
+                       (scatter_add(weight, graph.num_nodes, dim_size=self.max_node + 1) + self.eps)
         # TODO:
         self.moving_baseline = self.moving_baseline * self.baseline_momentum + baseline * (1 - self.baseline_momentum)
         reward -= self.moving_baseline[graph.num_nodes]
@@ -890,11 +887,11 @@ class GCPNGeneration(tasks.Task, core.Configurable):
         old_edge_prob = F.log_softmax(old_edge_logits, dim=-1)
 
         cur_logp = stop_prob[:, 0] + node1_prob[index_dict["node1_index_per_graph"]] \
-                        + node2_prob[index_dict["node2_index_per_graph"]] + torch.gather(edge_prob, -1, label3_target.view(-1, 1)).view(-1)
+                            + node2_prob[index_dict["node2_index_per_graph"]] + torch.gather(edge_prob, -1, label3_target.view(-1, 1)).view(-1)
         cur_logp[label4_target==1] = stop_prob[:, 1][label4_target==1]
 
         old_logp = old_stop_prob[:, 0] + old_node1_prob[old_index_dict["node1_index_per_graph"]] \
-                        + old_node2_prob[index_dict["node2_index_per_graph"]] + torch.gather(old_edge_prob, -1, label3_target.view(-1, 1)).view(-1)
+                            + old_node2_prob[index_dict["node2_index_per_graph"]] + torch.gather(old_edge_prob, -1, label3_target.view(-1, 1)).view(-1)
         old_logp[label4_target==1] = old_stop_prob[:, 1][label4_target==1]
         objective = functional.clipped_policy_gradient_objective(cur_logp, old_logp, reward)
         objective = objective.mean()
@@ -908,8 +905,6 @@ class GCPNGeneration(tasks.Task, core.Configurable):
     
     def MLE_forward(self, batch):
         all_loss = torch.tensor(0, dtype=torch.float32, device=self.device)
-        metric = {}
-
         graph = batch["graph"]
         stop_graph, stop_label1, stop_label2, stop_label3, stop_label4 = self.all_stop(graph)
         edge_graph, edge_label1, edge_label2, edge_label3, edge_label4 = self.all_edge(graph)        
@@ -924,8 +919,7 @@ class GCPNGeneration(tasks.Task, core.Configurable):
 
         loss_stop = F.nll_loss(F.log_softmax(stop_logits, dim=-1), label4_target, reduction='none')
         loss_stop = 0.5 * (torch.mean(loss_stop[label4_target==0]) + torch.mean(loss_stop[label4_target==1]))
-        #loss_stop = torch.mean(loss_stop)
-        metric["stop bce loss"] = loss_stop
+        metric = {"stop bce loss": loss_stop}
         all_loss += loss_stop
 
         loss_node1 = -(scatter_log_softmax(node1_logits, index_dict["extended_node2graph"])[index_dict["node1_index_per_graph"]])
@@ -949,17 +943,15 @@ class GCPNGeneration(tasks.Task, core.Configurable):
         pred = stop_logits, node1_logits, node2_logits, edge_logits
         target = label1_target, label2_target, label3_target, label4_target, index_dict
 
-        metric.update(self.evaluate(pred, target))
+        metric |= self.evaluate(pred, target)
 
         return all_loss, metric
 
     def evaluate(self, pred, target):
-        stop_logits, node1_logits, node2_logits, edge_logits = pred 
+        stop_logits, node1_logits, node2_logits, edge_logits = pred
         label1_target, label2_target, label3_target, label4_target, index_dict = target
-        metric = {}
         stop_acc = torch.argmax(stop_logits, -1) == label4_target
-        metric["stop acc"] = stop_acc.float().mean()
-
+        metric = {"stop acc": stop_acc.float().mean()}
         node1_pred = scatter_max(node1_logits, index_dict["extended_node2graph"])[1]
         node1_acc = node1_pred == index_dict["node1_index_per_graph"]
         metric["node1 acc"] = node1_acc[label4_target==0].float().mean()
@@ -1197,14 +1189,19 @@ class GCPNGeneration(tasks.Task, core.Configurable):
         node2_action = torch.zeros(len(graph), dtype=torch.long, device=self.device)
         edge_action = torch.zeros(len(graph), dtype=torch.long, device=self.device)
 
-        for i in range(max_resample):
+        for _ in range(max_resample):
             # maximal resample time
             mask = ~is_valid
-            if max_resample == 1:
-                tmp_stop_action, tmp_node1_action, tmp_node2_action, tmp_edge_action = self._top1_action(graph, off_policy)
-            else:
-                tmp_stop_action, tmp_node1_action, tmp_node2_action, tmp_edge_action = self._sample_action(graph, off_policy)
-
+            (
+                tmp_stop_action,
+                tmp_node1_action,
+                tmp_node2_action,
+                tmp_edge_action,
+            ) = (
+                self._top1_action(graph, off_policy)
+                if max_resample == 1
+                else self._sample_action(graph, off_policy)
+            )
             stop_action[mask] = tmp_stop_action[mask]
             node1_action[mask] = tmp_node1_action[mask]
             node2_action[mask] = tmp_node2_action[mask]
@@ -1227,14 +1224,14 @@ class GCPNGeneration(tasks.Task, core.Configurable):
             bond_type = graph.bond_type.clone()
             edge_list[:, :2] -= graph._offsets.unsqueeze(-1)
             is_modified_edge = (edge_list[:, :2] == new_edge[graph.edge2graph]).all(dim=-1) & \
-                        (stop_action[graph.edge2graph] == 0)
+                            (stop_action[graph.edge2graph] == 0)
             has_modified_edge = scatter_max(is_modified_edge.long(), graph.edge2graph, dim_size=len(graph))[0] > 0
             bond_type[is_modified_edge] = edge_action[has_modified_edge]
             edge_list[is_modified_edge, 2] = edge_action[has_modified_edge]
             # tmp modify reverse edges
             new_edge = new_edge.flip(-1)
             is_modified_edge = (edge_list[:, :2] == new_edge[graph.edge2graph]).all(dim=-1) & \
-                        (stop_action[graph.edge2graph] == 0)   
+                            (stop_action[graph.edge2graph] == 0)
             bond_type[is_modified_edge] = edge_action[has_modified_edge]
             edge_list[is_modified_edge, 2] = edge_action[has_modified_edge]             
 
@@ -1364,8 +1361,7 @@ class GCPNGeneration(tasks.Task, core.Configurable):
 
         self.train(is_training)
 
-        result = self._cat(result)
-        return result
+        return self._cat(result)
 
     def _append(self, data, num_xs, input, mask=None):
         if mask is None:

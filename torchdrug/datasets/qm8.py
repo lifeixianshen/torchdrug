@@ -50,12 +50,12 @@ class QM8(data.MoleculeDataset):
         csv_file2 = os.path.join(path, "qm8.sdf.clean.csv")
 
         if not os.path.exists(csv_file2):
-            with open(csv_file, "r") as fin, open(csv_file2, "w") as fout:
+            with (open(csv_file, "r") as fin, open(csv_file2, "w") as fout):
                 reader = csv.reader(fin)
                 writer = csv.writer(fout)
                 fields = next(reader)
-                fields[5:9] = [field + "/def2SVP" for field in fields[5:9]]
-                fields[9:13] = [field + "/def2TZVP" for field in fields[9:13]]
+                fields[5:9] = [f"{field}/def2SVP" for field in fields[5:9]]
+                fields[9:13] = [f"{field}/def2TZVP" for field in fields[9:13]]
                 writer.writerow(fields)
                 for values in reader:
                     writer.writerow(values)

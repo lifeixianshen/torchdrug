@@ -37,12 +37,13 @@ class PubChem110m(data.MoleculeDataset):
         with open(smiles_file, "r") as fin:
             reader = csv.reader(fin, delimiter="\t")
             if verbose:
-                reader = iter(tqdm(reader, "Loading %s" % path, utils.get_line_count(smiles_file)))
-            smiles_list = []
-
-            for values in reader:
-                smiles = values[1]
-                smiles_list.append(smiles)
-
+                reader = iter(
+                    tqdm(
+                        reader,
+                        f"Loading {path}",
+                        utils.get_line_count(smiles_file),
+                    )
+                )
+            smiles_list = [values[1] for values in reader]
         targets = {}
         self.load_smiles(smiles_list, targets, lazy=True, verbose=verbose, **kwargs)

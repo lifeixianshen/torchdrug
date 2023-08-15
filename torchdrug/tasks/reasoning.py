@@ -107,7 +107,7 @@ class KnowledgeGraphCompletion(tasks.Task, core.Configurable):
                 target = torch.ones_like(negative)
                 loss = F.margin_ranking_loss(positive, negative, target, margin=self.margin)
             else:
-                raise ValueError("Unknown criterion `%s`" % criterion)
+                raise ValueError(f"Unknown criterion `{criterion}`")
 
             if self.sample_weight:
                 sample_weight = self.degree_hr[pos_h_index, pos_r_index] * self.degree_tr[pos_t_index, pos_r_index]
@@ -206,7 +206,7 @@ class KnowledgeGraphCompletion(tasks.Task, core.Configurable):
                 threshold = int(_metric[5:])
                 score = (ranking <= threshold).float().mean()
             else:
-                raise ValueError("Unknown metric `%s`" % _metric)
+                raise ValueError(f"Unknown metric `{_metric}`")
 
             name = tasks._get_metric_name(_metric)
             metric[name] = score
@@ -244,6 +244,4 @@ class KnowledgeGraphCompletion(tasks.Task, core.Configurable):
         num_h_candidate = h_mask.sum(dim=-1)
         neg_h_index = functional.variadic_sample(neg_h_candidate, num_h_candidate, self.num_negative)
 
-        neg_index = torch.cat([neg_t_index, neg_h_index])
-
-        return neg_index
+        return torch.cat([neg_t_index, neg_h_index])

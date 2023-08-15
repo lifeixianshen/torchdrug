@@ -146,8 +146,7 @@ class PerfectHash(object):
     def second2first(self):
         """Level-2 hash values to level-1 hash values mapping."""
         range = torch.arange(self.num_output, device=self.device)
-        second2first = range.repeat_interleave(self.num_sub_outputs)
-        return second2first
+        return range.repeat_interleave(self.num_sub_outputs)
 
     @property
     def device(self):
@@ -250,8 +249,7 @@ class Dictionary(object):
         """
         keys = self.keys.tolist()
         values = self.values.tolist()
-        dict = {tuple(k): tuple(v) for k, v in zip(keys, values)}
-        return dict
+        return {tuple(k): tuple(v) for k, v in zip(keys, values)}
 
     @property
     def device(self):

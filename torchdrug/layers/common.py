@@ -37,11 +37,7 @@ class MultiLayerPerceptron(nn.Module):
             self.activation = getattr(F, activation)
         else:
             self.activation = activation
-        if dropout:
-            self.dropout = nn.Dropout(dropout)
-        else:
-            self.dropout = None
-
+        self.dropout = nn.Dropout(dropout) if dropout else None
         self.layers = nn.ModuleList()
         for i in range(len(self.dims) - 1):
             self.layers.append(nn.Linear(self.dims[i], self.dims[i + 1]))
@@ -130,8 +126,7 @@ class GaussianSmearing(nn.Module):
         """
         distance = (x - y).norm(2, dim=-1, keepdim=True)
         z = (distance - self.mu) / self.sigma
-        prob = torch.exp(-0.5 * z * z)
-        return prob
+        return torch.exp(-0.5 * z * z)
 
 
 class PairNorm(nn.Module):
@@ -231,9 +226,10 @@ class MutualInformation(nn.Module):
         positive[index] = 1
         negative = ~positive
 
-        mutual_info = - functional.shifted_softplus(-score[positive]).mean() \
-                      - functional.shifted_softplus(score[negative]).mean()
-        return mutual_info
+        return (
+            -functional.shifted_softplus(-score[positive]).mean()
+            - functional.shifted_softplus(score[negative]).mean()
+        )
 
 
 class Sequential(nn.Sequential):
@@ -279,10 +275,7 @@ class Sequential(nn.Sequential):
 
     def __init__(self, *args, global_args=None, allow_unused=False):
         super(Sequential, self).__init__(*args)
-        if global_args is not None:
-            self.global_args = set(global_args)
-        else:
-            self.global_args = {}
+        self.global_args = set(global_args) if global_args is not None else {}
         self.allow_unused = allow_unused
 
     def forward(self, *args, **kwargs):
@@ -298,7 +291,7 @@ class Sequential(nn.Sequential):
                     break
                 if name in kwargs:
                     continue
-                if name in global_kwargs and name not in kwargs:
+                if name in global_kwargs:
                     kwargs[name] = global_kwargs[name]
                     continue
                 kwargs[name] = args[j]
@@ -312,11 +305,11 @@ class Sequential(nn.Sequential):
 
             output = module(**kwargs)
 
-            global_kwargs.update({k: v for k, v in kwargs.items() if k in self.global_args})
+            global_kwargs |= {k: v for k, v in kwargs.items() if k in self.global_args}
             args = []
             kwargs = {}
             if isinstance(output, dict):
-                kwargs.update(output)
+                kwargs |= output
             elif isinstance(output, Sequence):
                 args += list(output)
             else:

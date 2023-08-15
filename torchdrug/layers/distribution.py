@@ -32,8 +32,11 @@ class IndependentGaussian(nn.Module):
         Parameters:
             input (Tensor): input data of shape :math:`(..., N)`
         """
-        log_likelihood = -0.5 * (math.log(2 * math.pi) + self.sigma2.log() + (input - self.mu) ** 2 / self.sigma2)
-        return log_likelihood
+        return -0.5 * (
+            math.log(2 * math.pi)
+            + self.sigma2.log()
+            + (input - self.mu) ** 2 / self.sigma2
+        )
 
     def sample(self, *size):
         """
@@ -46,5 +49,4 @@ class IndependentGaussian(nn.Module):
             size = size[0]
         size = list(size) + [self.dim]
 
-        sample = torch.randn(size, device=self.mu.device) * self.sigma2.sqrt() + self.mu
-        return sample
+        return torch.randn(size, device=self.mu.device) * self.sigma2.sqrt() + self.mu

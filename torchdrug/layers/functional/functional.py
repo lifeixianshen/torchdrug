@@ -17,8 +17,7 @@ def multinomial(input, num_sample, replacement=False):
         return torch.multinomial(input, num_sample, replacement)
 
     rand = torch.rand_like(input).log() / input
-    samples = rand.topk(num_sample).indices
-    return samples
+    return rand.topk(num_sample).indices
 
 
 def masked_mean(input, mask, dim=None, keepdim=False):
@@ -137,8 +136,7 @@ def _size_to_index(size):
         size (LongTensor): size of each sample
     """
     range = torch.arange(len(size), device=size.device)
-    index2sample = range.repeat_interleave(size)
-    return index2sample
+    return range.repeat_interleave(size)
 
 
 def _extend(data, size, input, input_size):
@@ -190,8 +188,7 @@ def variadic_sum(input, size):
     index2sample = index2sample.view([-1] + [1] * (input.ndim - 1))
     index2sample = index2sample.expand_as(input)
 
-    value = scatter_add(input, index2sample, dim=0)
-    return value
+    return scatter_add(input, index2sample, dim=0)
 
 
 def variadic_mean(input, size):
@@ -208,8 +205,7 @@ def variadic_mean(input, size):
     index2sample = index2sample.view([-1] + [1] * (input.ndim - 1))
     index2sample = index2sample.expand_as(input)
 
-    value = scatter_mean(input, index2sample, dim=0)
-    return value
+    return scatter_mean(input, index2sample, dim=0)
 
 
 def variadic_max(input, size):
@@ -248,8 +244,7 @@ def variadic_log_softmax(input, size):
     index2sample = index2sample.view([-1] + [1] * (input.ndim - 1))
     index2sample = index2sample.expand_as(input)
 
-    log_likelihood = scatter_log_softmax(input, index2sample, dim=0)
-    return log_likelihood
+    return scatter_log_softmax(input, index2sample, dim=0)
 
 
 def variadic_softmax(input, size):
@@ -266,8 +261,7 @@ def variadic_softmax(input, size):
     index2sample = index2sample.view([-1] + [1] * (input.ndim - 1))
     index2sample = index2sample.expand_as(input)
 
-    log_likelihood = scatter_softmax(input, index2sample, dim=0)
-    return log_likelihood
+    return scatter_softmax(input, index2sample, dim=0)
 
 
 def variadic_cross_entropy(input, target, size, reduction="mean"):
@@ -299,7 +293,7 @@ def variadic_cross_entropy(input, target, size, reduction="mean"):
     elif reduction == "none":
         return loss
     else:
-        raise ValueError("Unknown reduction `%s`" % reduction)
+        raise ValueError(f"Unknown reduction `{reduction}`")
 
 
 def variadic_topk(input, size, k, largest=True):
@@ -410,8 +404,7 @@ def variadic_randperm(size):
         device (torch.device, optional): device of the tensor
     """
     rand = torch.rand(size.sum(), device=size.device)
-    perm = variadic_sort(rand, size)[1]
-    return perm
+    return variadic_sort(rand, size)[1]
 
 
 def variadic_sample(input, size, num_sample):
@@ -428,8 +421,7 @@ def variadic_sample(input, size, num_sample):
     rand = torch.rand(len(size), num_sample, device=size.device)
     index = (rand * size.unsqueeze(-1)).long()
     index = index + (size.cumsum(0) - size).unsqueeze(-1)
-    sample = input[index]
-    return sample
+    return input[index]
 
 
 def one_hot(index, size):
@@ -452,8 +444,7 @@ def one_hot(index, size):
 def clipped_policy_gradient_objective(policy, agent, reward, eps=0.2):
     ratio = (policy - agent.detach()).exp()
     ratio = ratio.clamp(-10, 10)
-    objective = torch.min(ratio * reward, ratio.clamp(1 - eps, 1 + eps) * reward)
-    return objective
+    return torch.min(ratio * reward, ratio.clamp(1 - eps, 1 + eps) * reward)
 
 
 def policy_gradient_objective(policy, reward):

@@ -58,14 +58,12 @@ class MessagePassingBase(nn.Module):
             Tensor: node updates of shape :math:`(|V|, ...)`
         """
         message = self.message(graph, input)
-        update = self.aggregate(graph, message)
-        return update
+        return self.aggregate(graph, message)
 
     def _message_and_aggregate(self, *tensors):
         graph = data.Graph.from_tensors(tensors[:-1])
         input = tensors[-1]
-        update = self.message_and_aggregate(graph, input)
-        return update
+        return self.message_and_aggregate(graph, input)
 
     def combine(self, input, update):
         """
@@ -89,8 +87,7 @@ class MessagePassingBase(nn.Module):
             update = checkpoint.checkpoint(self._message_and_aggregate, *graph.to_tensors(), input)
         else:
             update = self.message_and_aggregate(graph, input)
-        output = self.combine(input, update)
-        return output
+        return self.combine(input, update)
 
 
 class GraphConv(MessagePassingBase):
@@ -114,10 +111,7 @@ class GraphConv(MessagePassingBase):
         self.output_dim = output_dim
         self.edge_input_dim = edge_input_dim
 
-        if batch_norm:
-            self.batch_norm = nn.BatchNorm1d(output_dim)
-        else:
-            self.batch_norm = None
+        self.batch_norm = nn.BatchNorm1d(output_dim) if batch_norm else None
         if isinstance(activation, str):
             self.activation = getattr(F, activation)
         else:
@@ -213,10 +207,7 @@ class GraphAttentionConv(MessagePassingBase):
         self.concat = concat
         self.leaky_relu = functools.partial(F.leaky_relu, negative_slope=negative_slope)
 
-        if batch_norm:
-            self.batch_norm = nn.BatchNorm1d(output_dim)
-        else:
-            self.batch_norm = None
+        self.batch_norm = nn.BatchNorm1d(output_dim) if batch_norm else None
         if isinstance(activation, str):
             self.activation = getattr(F, activation)
         else:
@@ -258,14 +249,12 @@ class GraphAttentionConv(MessagePassingBase):
 
         value = hidden[node_in].view(-1, self.num_head, self.query.shape[-1] // 2)
         attention = attention.unsqueeze(-1).expand_as(value)
-        message = (attention * value).flatten(1)
-        return message
+        return (attention * value).flatten(1)
 
     def aggregate(self, graph, message):
         # add self loop
         node_out = torch.cat([graph.edge_list[:, 1], torch.arange(graph.num_node, device=graph.device)])
-        update = scatter_mean(message, node_out, dim=0, dim_size=graph.num_node)
-        return update
+        return scatter_mean(message, node_out, dim=0, dim_size=graph.num_node)
 
     def combine(self, input, update):
         output = update
@@ -306,10 +295,7 @@ class GraphIsomorphismConv(MessagePassingBase):
             self.eps = nn.Parameter(eps)
         else:
             self.register_buffer("eps", eps)
-        if batch_norm:
-            self.batch_norm = nn.BatchNorm1d(output_dim)
-        else:
-            self.batch_norm = None
+        self.batch_norm = nn.BatchNorm1d(output_dim) if batch_norm else None
         if isinstance(activation, str):
             self.activation = getattr(F, activation)
         else:
@@ -333,8 +319,9 @@ class GraphIsomorphismConv(MessagePassingBase):
     def aggregate(self, graph, message):
         node_out = graph.edge_list[:, 1]
         edge_weight = graph.edge_weight.unsqueeze(-1)
-        update = scatter_add(message * edge_weight, node_out, dim=0, dim_size=graph.num_node)
-        return update
+        return scatter_add(
+            message * edge_weight, node_out, dim=0, dim_size=graph.num_node
+        )
 
     def message_and_aggregate(self, graph, input):
         adjacency = utils.sparse_coo_tensor(graph.edge_list.t()[:2], graph.edge_weight,
@@ -386,10 +373,7 @@ class RelationalGraphConv(MessagePassingBase):
         self.num_relation = num_relation
         self.edge_input_dim = edge_input_dim
 
-        if batch_norm:
-            self.batch_norm = nn.BatchNorm1d(output_dim)
-        else:
-            self.batch_norm = None
+        self.batch_norm = nn.BatchNorm1d(output_dim) if batch_norm else None
         if isinstance(activation, str):
             self.activation = getattr(F, activation)
         else:
@@ -473,10 +457,7 @@ class NeuralFingerprintConv(MessagePassingBase):
         self.output_dim = output_dim
         self.edge_input_dim = edge_input_dim
 
-        if batch_norm:
-            self.batch_norm = nn.BatchNorm1d(output_dim)
-        else:
-            self.batch_norm = None
+        self.batch_norm = nn.BatchNorm1d(output_dim) if batch_norm else None
         if isinstance(activation, str):
             self.activation = getattr(F, activation)
         else:
@@ -498,8 +479,9 @@ class NeuralFingerprintConv(MessagePassingBase):
     def aggregate(self, graph, message):
         node_out = graph.edge_list[:, 1]
         edge_weight = graph.edge_weight.unsqueeze(-1)
-        update = scatter_add(message * edge_weight, node_out, dim=0, dim_size=graph.num_node)
-        return update
+        return scatter_add(
+            message * edge_weight, node_out, dim=0, dim_size=graph.num_node
+        )
 
     def message_and_aggregate(self, graph, input):
         adjacency = utils.sparse_coo_tensor(graph.edge_list.t()[:2], graph.edge_weight,
@@ -557,10 +539,7 @@ class ContinuousFilterConv(MessagePassingBase):
         self.hidden_dim = hidden_dim
         self.rbf = layers.RBF(stop=cutoff, num_kernel=num_gaussian)
 
-        if batch_norm:
-            self.batch_norm = nn.BatchNorm1d(output_dim)
-        else:
-            self.batch_norm = None
+        self.batch_norm = nn.BatchNorm1d(output_dim) if batch_norm else None
         if activation == "shifted_softplus":
             self.activation = functional.shifted_softplus
         elif isinstance(activation, str):
@@ -589,8 +568,9 @@ class ContinuousFilterConv(MessagePassingBase):
     def aggregate(self, graph, message):
         node_out = graph.edge_list[:, 1]
         edge_weight = graph.edge_weight.unsqueeze(-1)
-        update = scatter_add(message * edge_weight, node_out, dim=0, dim_size=graph.num_node)
-        return update
+        return scatter_add(
+            message * edge_weight, node_out, dim=0, dim_size=graph.num_node
+        )
 
     def message_and_aggregate(self, graph, input):
         node_in, node_out = graph.edge_list.t()[:2]
@@ -646,10 +626,7 @@ class MessagePassing(MessagePassingBase):
         if hidden_dims is None:
             hidden_dims = []
 
-        if batch_norm:
-            self.batch_norm = nn.BatchNorm1d(input_dim)
-        else:
-            self.batch_norm = None
+        self.batch_norm = nn.BatchNorm1d(input_dim) if batch_norm else None
         if isinstance(activation, str):
             self.activation = getattr(F, activation)
         else:
@@ -660,17 +637,18 @@ class MessagePassing(MessagePassingBase):
     def message(self, graph, input):
         node_in = graph.edge_list[:, 0]
         transform = self.edge_mlp(graph.edge_feature.float()).view(-1, self.input_dim, self.input_dim)
-        if graph.num_edge:
-            message = torch.einsum("bed, bd -> be", transform, input[node_in])
-        else:
-            message = torch.zeros(0, self.input_dim, device=graph.device)
-        return message
+        return (
+            torch.einsum("bed, bd -> be", transform, input[node_in])
+            if graph.num_edge
+            else torch.zeros(0, self.input_dim, device=graph.device)
+        )
 
     def aggregate(self, graph, message):
         node_out = graph.edge_list[:, 1]
         edge_weight = graph.edge_weight.unsqueeze(-1)
-        update = scatter_add(message * edge_weight, node_out, dim=0, dim_size=graph.num_node)
-        return update
+        return scatter_add(
+            message * edge_weight, node_out, dim=0, dim_size=graph.num_node
+        )
 
     def combine(self, input, update):
         output = update
@@ -707,10 +685,7 @@ class ChebyshevConv(MessagePassingBase):
         self.k = k
         self.edge_input_dim = edge_input_dim
 
-        if batch_norm:
-            self.batch_norm = nn.BatchNorm1d(output_dim)
-        else:
-            self.batch_norm = None
+        self.batch_norm = nn.BatchNorm1d(output_dim) if batch_norm else None
         if isinstance(activation, str):
             self.activation = getattr(F, activation)
         else:
@@ -777,5 +752,4 @@ class ChebyshevConv(MessagePassingBase):
         return output
 
     def combine(self, input, update):
-        output = input + update
-        return output
+        return input + update

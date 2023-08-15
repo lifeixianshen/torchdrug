@@ -104,10 +104,7 @@ class Molecule(Graph):
                           "To discard stereo information, call `mol.bond_stereo[:] = 0` before applying masks.")
 
     def _maybe_num_node(self, edge_list):
-        if len(edge_list):
-            return edge_list[:, :2].max().item() + 1
-        else:
-            return 0
+        return edge_list[:, :2].max().item() + 1 if len(edge_list) else 0
 
     @classmethod
     def from_smiles(cls, smiles, node_feature="default", edge_feature="default", graph_feature=None,
@@ -129,7 +126,7 @@ class Molecule(Graph):
         """
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
-            raise ValueError("Invalid SMILES `%s`" % smiles)
+            raise ValueError(f"Invalid SMILES `{smiles}`")
 
         return cls.from_molecule(mol, node_feature, edge_feature, graph_feature, with_hydrogen, kekulize)
 
@@ -180,7 +177,7 @@ class Molecule(Graph):
             atom_map.append(atom.GetAtomMapNum())
             feature = []
             for name in node_feature:
-                func = R.get("features.atom.%s" % name)
+                func = R.get(f"features.atom.{name}")
                 feature += func(atom)
             _node_feature.append(feature)
         atom_type = torch.tensor(atom_type)[:-1]
@@ -203,10 +200,7 @@ class Molecule(Graph):
         for bond in bonds:
             type = str(bond.GetBondType())
             stereo = bond.GetStereo()
-            if stereo:
-                _atoms = [a for a in bond.GetStereoAtoms()]
-            else:
-                _atoms = [0, 0]
+            _atoms = list(bond.GetStereoAtoms()) if stereo else [0, 0]
             if type not in cls.bond2id:
                 continue
             type = cls.bond2id[type]
@@ -220,7 +214,7 @@ class Molecule(Graph):
             stereo_atoms += [_atoms, _atoms]
             feature = []
             for name in edge_feature:
-                func = R.get("features.bond.%s" % name)
+                func = R.get(f"features.bond.{name}")
                 feature += func(bond)
             _edge_feature += [feature, feature]
         edge_list = edge_list[:-2]
@@ -234,7 +228,7 @@ class Molecule(Graph):
 
         _graph_feature = []
         for name in graph_feature:
-            func = R.get("features.molecule.%s" % name)
+            func = R.get(f"features.molecule.{name}")
             _graph_feature += func(mol)
         if len(graph_feature) > 0:
             _graph_feature = torch.tensor(_graph_feature)
@@ -369,8 +363,7 @@ class Molecule(Graph):
             str
         """
         smiles = self.to_smiles()
-        scaffold = MurckoScaffold.MurckoScaffoldSmiles(smiles, includeChirality=chirality)
-        return scaffold
+        return MurckoScaffold.MurckoScaffoldSmiles(smiles, includeChirality=chirality)
 
     def node_mask(self, index, compact=False):
         self._check_no_stereo()
@@ -418,8 +411,7 @@ class Molecule(Graph):
             index = torch.isnan(max_atom_valence).nonzero()[0]
             raise ValueError("Fail to check valence. Unknown atom type %d" % self.atom_type[index])
 
-        is_valid = (self.explicit_valence <= max_atom_valence).all()
-        return is_valid
+        return (self.explicit_valence <= max_atom_valence).all()
 
     @utils.cached_property
     def is_valid_rdkit(self):
@@ -447,10 +439,7 @@ class Molecule(Graph):
         is_root = ax is None
         if ax is None:
             fig = plt.figure(figsize=figure_size)
-            if title is not None:
-                ax = plt.gca()
-            else:
-                ax = fig.add_axes([0, 0, 1, 1])
+            ax = plt.gca() if title is not None else fig.add_axes([0, 0, 1, 1])
         if title is not None:
             ax.set_title(title)
 
@@ -539,8 +528,9 @@ class PackedMolecule(PackedGraph, Molecule):
             raise ValueError("Fail to check valence. Unknown atom type %d" % self.atom_type[index])
 
         is_valid = self.explicit_valence <= max_atom_valence
-        is_valid = scatter_min(is_valid.long(), self.node2graph, dim_size=self.batch_size)[0].bool()
-        return is_valid
+        return scatter_min(
+            is_valid.long(), self.node2graph, dim_size=self.batch_size
+        )[0].bool()
 
     @utils.cached_property
     def is_valid_rdkit(self):
@@ -568,7 +558,7 @@ class PackedMolecule(PackedGraph, Molecule):
         for smiles in smiles_list:
             mol = Chem.MolFromSmiles(smiles)
             if mol is None:
-                raise ValueError("Invalid SMILES `%s`" % smiles)
+                raise ValueError(f"Invalid SMILES `{smiles}`")
             mols.append(mol)
 
         return cls.from_molecule(mols, node_feature, edge_feature, graph_feature, with_hydrogen, kekulize)

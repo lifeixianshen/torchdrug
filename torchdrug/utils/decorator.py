@@ -67,11 +67,11 @@ def cached(func, debug=False):
             for k, v in arguments.items():
                 if not equal(self._forward_cache[k], v):
                     hit = False
-                    message.append("%s: miss" % k)
+                    message.append(f"{k}: miss")
                     break
-                message.append("%s: hit" % k)
+                message.append(f"{k}: hit")
             if debug:
-                print("[cache] %s" % ", ".join(message))
+                print(f'[cache] {", ".join(message)}')
         else:
             hit = False
             if debug:
@@ -82,7 +82,7 @@ def cached(func, debug=False):
             self._forward_cache = {}
 
         for k, v in arguments.items():
-            if isinstance(v, torch.Tensor) or isinstance(v, data.Graph):
+            if isinstance(v, (torch.Tensor, data.Graph)):
                 v = v.detach()
             self._forward_cache[k] = v
         result = forward(self, *args, **kwargs)

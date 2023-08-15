@@ -23,7 +23,7 @@ class GraphSamplerTest(unittest.TestCase):
 
         sampler = layers.NodeSampler(ratio=0.8).cuda()
         results = []
-        for i in range(2000):
+        for _ in range(2000):
             graph = sampler(self.graph)
             node_feature = conv(graph, self.input)
             result = readout(graph, node_feature)
@@ -35,7 +35,7 @@ class GraphSamplerTest(unittest.TestCase):
 
         sampler = layers.EdgeSampler(ratio=0.8).cuda()
         results = []
-        for i in range(2000):
+        for _ in range(2000):
             graph = sampler(self.graph)
             node_feature = conv(graph, self.input)
             result = readout(graph, node_feature)

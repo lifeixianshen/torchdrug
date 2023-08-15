@@ -187,8 +187,8 @@ class Engine(core.Configurable):
         """
         if comm.get_rank() == 0:
             logger.warning(pretty.separator)
-            logger.warning("Evaluate on %s" % split)
-        test_set = getattr(self, "%s_set" % split)
+            logger.warning(f"Evaluate on {split}")
+        test_set = getattr(self, f"{split}_set")
         sampler = torch_data.DistributedSampler(test_set, self.world_size, self.rank)
         dataloader = data.DataLoader(test_set, self.batch_size, sampler=sampler, num_workers=self.num_worker)
         model = self.model
@@ -211,7 +211,7 @@ class Engine(core.Configurable):
             target = comm.cat(target)
         metric = model.evaluate(pred, target)
         if log:
-            self.meter.log(metric, category="%s/epoch" % split)
+            self.meter.log(metric, category=f"{split}/epoch")
 
         return metric
 
@@ -224,7 +224,7 @@ class Engine(core.Configurable):
             load_optimizer (bool, optional): load optimizer state or not
         """
         if comm.get_rank() == 0:
-            logger.warning("Load checkpoint from %s" % checkpoint)
+            logger.warning(f"Load checkpoint from {checkpoint}")
         checkpoint = os.path.expanduser(checkpoint)
         state = torch.load(checkpoint, map_location=self.device)
 
@@ -247,7 +247,7 @@ class Engine(core.Configurable):
             checkpoint (file-like): checkpoint file
         """
         if comm.get_rank() == 0:
-            logger.warning("Save checkpoint to %s" % checkpoint)
+            logger.warning(f"Save checkpoint to {checkpoint}")
         checkpoint = os.path.expanduser(checkpoint)
         if self.rank == 0:
             state = {
@@ -264,7 +264,9 @@ class Engine(core.Configurable):
         Construct an instance from the configuration dict.
         """
         if getattr(cls, "_registry_key", cls.__name__) != config["class"]:
-            raise ValueError("Expect config class to be `%s`, but found `%s`" % (cls.__name__, config["class"]))
+            raise ValueError(
+                f'Expect config class to be `{cls.__name__}`, but found `{config["class"]}`'
+            )
 
         optimizer_config = config.pop("optimizer")
         new_config = {}

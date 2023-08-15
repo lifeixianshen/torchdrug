@@ -131,26 +131,21 @@ class USPTO50k(data.ReactionDataset):
                 edge_label[index] = 1
                 h, t = edge_added[0]
                 reaction_center = torch.tensor([product.atom_map[h], product.atom_map[t]])
-        else:
-            if len(edge_modified) == 1: # modify a single edge
-                h, t = edge_modified[0]
-                if product.degree_in[h] == 1:
-                    node_label[h] = 1
-                    reaction_center = torch.tensor([product.atom_map[h], 0])
-                elif product.degree_in[t] == 1:
-                    node_label[t] = 1
-                    reaction_center = torch.tensor([product.atom_map[t], 0])
-                else:
-                    # pretend the reaction center is h
-                    node_label[h] = 1
-                    reaction_center = torch.tensor([product.atom_map[h], 0])
+        elif len(edge_modified) == 1: # modify a single edge
+            h, t = edge_modified[0]
+            if product.degree_in[h] == 1 or product.degree_in[t] != 1:
+                node_label[h] = 1
+                reaction_center = torch.tensor([product.atom_map[h], 0])
             else:
-                product_hs = torch.tensor([atom.GetTotalNumHs() for atom in product.to_molecule().GetAtoms()])
-                reactant_hs = torch.tensor([atom.GetTotalNumHs() for atom in reactant.to_molecule().GetAtoms()])
-                atom_modified = (product_hs != reactant_hs[prod2react]).nonzero().flatten()
-                if len(atom_modified) == 1: # modify single node
-                    node_label[atom_modified] = 1
-                    reaction_center = torch.tensor([product.atom_map[atom_modified[0]], 0])
+                node_label[t] = 1
+                reaction_center = torch.tensor([product.atom_map[t], 0])
+        else:
+            product_hs = torch.tensor([atom.GetTotalNumHs() for atom in product.to_molecule().GetAtoms()])
+            reactant_hs = torch.tensor([atom.GetTotalNumHs() for atom in reactant.to_molecule().GetAtoms()])
+            atom_modified = (product_hs != reactant_hs[prod2react]).nonzero().flatten()
+            if len(atom_modified) == 1: # modify single node
+                node_label[atom_modified] = 1
+                reaction_center = torch.tensor([product.atom_map[atom_modified[0]], 0])
 
         if edge_label.sum() + node_label.sum() == 0:
             return [], []
@@ -206,13 +201,10 @@ class USPTO50k(data.ReactionDataset):
             if len(edge_modified) == 1:  # modify a single edge
                 synthon = product
                 h, t = edge_modified[0]
-                if product.degree_in[h] == 1:
+                if product.degree_in[h] == 1 or product.degree_in[t] != 1:
                     reaction_center = torch.tensor([product.atom_map[h], 0])
-                elif product.degree_in[t] == 1:
-                    reaction_center = torch.tensor([product.atom_map[t], 0])
                 else:
-                    # pretend the reaction center is h
-                    reaction_center = torch.tensor([product.atom_map[h], 0])
+                    reaction_center = torch.tensor([product.atom_map[t], 0])
                 with reactant.graph():
                     reactant.reaction_center = reaction_center
                 with synthon.graph():
@@ -251,7 +243,7 @@ class USPTO50k(data.ReactionDataset):
             key_lengths[-1] = num_sample - sum(key_lengths[:-1])
             react_indexes = data.key_split(react2index[reaction], react2sample[reaction], key_lengths=key_lengths)
             for index, react_index in zip(indexes, react_indexes):
-                index += [i for i in react_index]
+                index += list(react_index)
 
         return [torch_data.Subset(self, index) for index in indexes]
 

@@ -40,24 +40,30 @@ class SPMMTest(unittest.TestCase):
 
             node_in, node_out = self.graph.edge_list.t()
             result = functional.generalized_spmm(self.graph.adjacency.t(), self.input, sum=sum_op, mul=mul_op)
-            sum_func = getattr(torch_scatter, "scatter_%s" % sum_op)
+            sum_func = getattr(torch_scatter, f"scatter_{sum_op}")
             mul_func = getattr(torch, mul_op)
             edge_weight = self.graph.edge_weight.unsqueeze(-1)
             message = mul_func(edge_weight, self.input[node_in])
             truth = sum_func(message, node_out, dim=0, dim_size=self.num_node)
             if isinstance(truth, tuple):
                 truth = truth[0]
-            self.assertTrue(torch.allclose(result, truth),
-                            "Incorrect generalized spmm forward (sum=`%s`, mul=`%s`)" % (sum_op, mul_op))
+            self.assertTrue(
+                torch.allclose(result, truth),
+                f"Incorrect generalized spmm forward (sum=`{sum_op}`, mul=`{mul_op}`)",
+            )
 
             result_edge, result_input = torch.autograd.grad(
                 result, (self.graph.edge_weight, self.input), self.output_grad)
             truth_edge, truth_input = torch.autograd.grad(
                 truth, (self.graph.edge_weight, self.input), self.output_grad)
-            self.assertTrue(torch.allclose(result_edge, truth_edge),
-                            "Incorrect generalized spmm backward (sum=`%s`, mul=`%s`)" % (sum_op, mul_op))
-            self.assertTrue(torch.allclose(result_input, truth_input),
-                            "Incorrect generalized spmm backward (sum=`%s`, mul=`%s`)" % (sum_op, mul_op))
+            self.assertTrue(
+                torch.allclose(result_edge, truth_edge),
+                f"Incorrect generalized spmm backward (sum=`{sum_op}`, mul=`{mul_op}`)",
+            )
+            self.assertTrue(
+                torch.allclose(result_input, truth_input),
+                f"Incorrect generalized spmm backward (sum=`{sum_op}`, mul=`{mul_op}`)",
+            )
 
     def test_rspmm(self):
         for device, (sum_op, mul_op) in product(self.devices, self.operators):
@@ -72,7 +78,7 @@ class SPMMTest(unittest.TestCase):
 
             result = functional.generalized_rspmm(self.knowledge_graph.adjacency.transpose(0, 1),
                                                   self.relation, self.input, sum=sum_op, mul=mul_op)
-            sum_func = getattr(torch_scatter, "scatter_%s" % sum_op)
+            sum_func = getattr(torch_scatter, f"scatter_{sum_op}")
             mul_func = getattr(torch, mul_op)
             node_in, node_out, relation = self.knowledge_graph.edge_list.t()
             edge_weight = self.knowledge_graph.edge_weight.unsqueeze(-1)
@@ -80,19 +86,27 @@ class SPMMTest(unittest.TestCase):
             truth = sum_func(edge_weight * message, node_out, dim=0, dim_size=self.num_node)
             if isinstance(truth, tuple):
                 truth = truth[0]
-            self.assertTrue(torch.allclose(result, truth),
-                            "Incorrect generalized rspmm forward (sum=`%s`, mul=`%s`)" % (sum_op, mul_op))
+            self.assertTrue(
+                torch.allclose(result, truth),
+                f"Incorrect generalized rspmm forward (sum=`{sum_op}`, mul=`{mul_op}`)",
+            )
 
             result_edge, result_relation, result_input = torch.autograd.grad(
                 result, (self.knowledge_graph.edge_weight, self.relation, self.input), self.output_grad)
             truth_edge, truth_relation, truth_input = torch.autograd.grad(
                 truth, (self.knowledge_graph.edge_weight, self.relation, self.input), self.output_grad)
-            self.assertTrue(torch.allclose(result_edge, truth_edge),
-                            "Incorrect generalized rspmm backward (sum=`%s`, mul=`%s`)" % (sum_op, mul_op))
-            self.assertTrue(torch.allclose(result_relation, truth_relation),
-                            "Incorrect generalized rspmm backward (sum=`%s`, mul=`%s`)" % (sum_op, mul_op))
-            self.assertTrue(torch.allclose(result_input, truth_input),
-                            "Incorrect generalized rspmm backward (sum=`%s`, mul=`%s`)" % (sum_op, mul_op))
+            self.assertTrue(
+                torch.allclose(result_edge, truth_edge),
+                f"Incorrect generalized rspmm backward (sum=`{sum_op}`, mul=`{mul_op}`)",
+            )
+            self.assertTrue(
+                torch.allclose(result_relation, truth_relation),
+                f"Incorrect generalized rspmm backward (sum=`{sum_op}`, mul=`{mul_op}`)",
+            )
+            self.assertTrue(
+                torch.allclose(result_input, truth_input),
+                f"Incorrect generalized rspmm backward (sum=`{sum_op}`, mul=`{mul_op}`)",
+            )
 
 
 if __name__ == "__main__":

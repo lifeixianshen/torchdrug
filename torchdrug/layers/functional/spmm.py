@@ -337,10 +337,11 @@ def generalized_spmm(sparse, input, sum="add", mul="mul"):
         sum (str, optional): generalized summation operator. Available operators are ``add``, ``min`` and ``max``.
         mul (str, optional): generalized multiplication operator. Available operators are ``add`` and ``mul``.
     """
-    name = "SPMM%s%sFunction" % (sum.capitalize(), mul.capitalize())
+    name = f"SPMM{sum.capitalize()}{mul.capitalize()}Function"
     if not hasattr(module, name):
-        raise ValueError("No generalized spmm implementation found for summation `%s` and multiplication `%s`"
-                         % (sum, mul))
+        raise ValueError(
+            f"No generalized spmm implementation found for summation `{sum}` and multiplication `{mul}`"
+        )
     Function = getattr(module, name)
     return Function.apply(sparse.coalesce(), input)
 
@@ -370,9 +371,10 @@ def generalized_rspmm(sparse, relation, input, sum="add", mul="mul"):
         sum (str, optional): generalized summation operator. Available operators are ``add``, ``min`` and ``max``.
         mul (str, optional): generalized multiplication operator. Available operators are ``add`` and ``mul``.
     """
-    name = "RSPMM%s%sFunction" % (sum.capitalize(), mul.capitalize())
+    name = f"RSPMM{sum.capitalize()}{mul.capitalize()}Function"
     if not hasattr(module, name):
-        raise ValueError("No generalized rspmm implementation found for summation `%s` and multiplication `%s`"
-                         % (sum, mul))
+        raise ValueError(
+            f"No generalized rspmm implementation found for summation `{sum}` and multiplication `{mul}`"
+        )
     Function = getattr(module, name)
     return Function.apply(sparse.coalesce(), relation, input)

@@ -33,7 +33,7 @@ class GraphAutoregressiveFlow(nn.Module, core.Configurable):
         assert dequantization_noise < 1
 
         self.layers = nn.ModuleList()
-        for i in range(num_layer):
+        for _ in range(num_layer):
             condition_dim = model.output_dim * (3 if use_edge else 1)
             self.layers.append(layers.ConditionalFlow(self.input_dim, condition_dim,
                                                       [model.output_dim] * (num_mlp_layer - 1)))
@@ -116,6 +116,4 @@ class GraphAutoregressiveFlow(nn.Module, core.Configurable):
         for layer in self.layers[::-1]:
             x, log_det = layer.reverse(x, condition)
 
-        output = x.argmax(dim=-1)
-
-        return output # (batch_size,)
+        return x.argmax(dim=-1)

@@ -57,12 +57,14 @@ class MoleculeDataset(torch_data.Dataset, core.Configurable):
 
         if verbose:
             smiles_list = tqdm(smiles_list, "Constructing molecules from SMILES")
-        
+
         for i, smiles in enumerate(smiles_list):
-            if not self.lazy or len(self.data) == 0:
+            if not self.lazy or not self.data:
                 mol = Chem.MolFromSmiles(smiles)
                 if not mol:
-                    logger.debug("Can't construct molecule from SMILES `%s`. Ignore this sample." % smiles)
+                    logger.debug(
+                        f"Can't construct molecule from SMILES `{smiles}`. Ignore this sample."
+                    )
                     continue
                 mol = data.Molecule.from_molecule(mol, **kwargs)
             else:
@@ -92,7 +94,13 @@ class MoleculeDataset(torch_data.Dataset, core.Configurable):
         with open(csv_file, "r") as fin:
             reader = csv.reader(fin)
             if verbose:
-                reader = iter(tqdm(reader, "Loading %s" % csv_file, utils.get_line_count(csv_file)))
+                reader = iter(
+                    tqdm(
+                        reader,
+                        f"Loading {csv_file}",
+                        utils.get_line_count(csv_file),
+                    )
+                )
             fields = next(reader)
             smiles = []
             targets = defaultdict(list)
@@ -123,15 +131,19 @@ class MoleculeDataset(torch_data.Dataset, core.Configurable):
             step = index.step or 1
             index = range(start, stop, step)
         elif not isinstance(index, list):
-            raise ValueError("Unknown index `%s`" % index)
+            raise ValueError(f"Unknown index `{index}`")
         return index
 
     def get_item(self, index):
-        if getattr(self, "lazy", False):
-            item = {"graph": data.Molecule.from_smiles(self.smiles_list[index], **self.kwargs)}
-        else:
-            item = {"graph": self.data[index]}
-        item.update({k: v[index] for k, v in self.targets.items()})
+        item = (
+            {
+                "graph": data.Molecule.from_smiles(
+                    self.smiles_list[index], **self.kwargs
+                )
+            }
+            if getattr(self, "lazy", False)
+            else {"graph": self.data[index]}
+        ) | {k: v[index] for k, v in self.targets.items()}
         if self.transform:
             item = self.transform(item)
         return item
@@ -247,7 +259,9 @@ class ReactionDataset(MoleculeDataset, core.Configurable):
             for _smiles in [smiles_reactant, smiles_product]:
                 mol = Chem.MolFromSmiles(_smiles)
                 if not mol:
-                    logger.debug("Can't construct molecule from SMILES `%s`. Ignore this sample." % _smiles)
+                    logger.debug(
+                        f"Can't construct molecule from SMILES `{_smiles}`. Ignore this sample."
+                    )
                     break
                 mol = data.Molecule.from_molecule(mol, **kwargs)
                 mols.append(mol)
@@ -323,7 +337,7 @@ class NodeClassificationDataset(torch_data.Dataset, core.Configurable):
         with open(node_file, "r") as fin:
             reader = csv.reader(fin, delimiter="\t")
             if verbose:
-                reader = tqdm(reader, "Loading %s" % node_file, utils.get_line_count(node_file))
+                reader = tqdm(reader, f"Loading {node_file}", utils.get_line_count(node_file))
             for tokens in reader:
                 node_token = tokens[0]
                 feature_tokens = tokens[1: -1]
@@ -341,7 +355,7 @@ class NodeClassificationDataset(torch_data.Dataset, core.Configurable):
         with open(edge_file, "r") as fin:
             reader = csv.reader(fin, delimiter="\t")
             if verbose:
-                reader = tqdm(reader, "Loading %s" % edge_file, utils.get_line_count(edge_file))
+                reader = tqdm(reader, f"Loading {edge_file}", utils.get_line_count(edge_file))
             for tokens in reader:
                 h_token, t_token = tokens
                 if h_token not in inv_node_vocab:
@@ -470,7 +484,7 @@ class KnowledgeGraphDataset(torch_data.Dataset, core.Configurable):
         with open(tsv_file, "r") as fin:
             reader = csv.reader(fin, delimiter="\t")
             if verbose:
-                reader = tqdm(reader, "Loading %s" % tsv_file)
+                reader = tqdm(reader, f"Loading {tsv_file}")
             for tokens in reader:
                 h_token, r_token, t_token = tokens
                 if h_token not in inv_entity_vocab:
@@ -503,7 +517,7 @@ class KnowledgeGraphDataset(torch_data.Dataset, core.Configurable):
             with open(tsv_file, "r") as fin:
                 reader = csv.reader(fin, delimiter="\t")
                 if verbose:
-                    reader = tqdm(reader, "Loading %s" % tsv_file, utils.get_line_count(tsv_file))
+                    reader = tqdm(reader, f"Loading {tsv_file}", utils.get_line_count(tsv_file))
 
                 num_sample = 0
                 for tokens in reader:
@@ -613,10 +627,7 @@ def key_split(dataset, keys, lengths=None, key_lengths=None):
                 return i - j
             if keys[indexes[i + j]] != keys[indexes[i + j - 1]]:
                 return i + j
-        if i < len(dataset) - i:
-            return 0
-        else:
-            return len(dataset)
+        return 0 if i < len(dataset) - i else len(dataset)
 
     keys = torch.as_tensor(keys)
     key_set, keys = torch.unique(keys, return_inverse=True)

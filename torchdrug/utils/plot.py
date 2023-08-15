@@ -120,7 +120,7 @@ def echarts(graph, title=None, node_colors=None, edge_colors=None, node_labels=N
         if i in node_colors:
             color = node_colors[i]
             if isinstance(color, tuple):
-                color = "rgb%s" % (color,)
+                color = f"rgb{color}"
             node["itemStyle"] = {"color": color}
         if node_labels:
             node["name"] = node_labels[i]
@@ -149,13 +149,13 @@ def echarts(graph, title=None, node_colors=None, edge_colors=None, node_labels=N
         if i in edge_colors:
             color = edge_colors[i]
             if isinstance(color, tuple):
-                color = "rgb%s" % (color,)
+                color = f"rgb{color}"
             edge["lineStyle"] = {"color": color}
         if relation_labels:
             edge["value"] = relation_labels[relation[i]]
         edges.append(edge)
 
-    json_file = os.path.splitext(save_file)[0] + ".json"
+    json_file = f"{os.path.splitext(save_file)[0]}.json"
     data = {
         "title": title,
         "nodes": nodes,

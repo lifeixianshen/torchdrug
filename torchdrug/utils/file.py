@@ -25,7 +25,7 @@ def download(url, path, save_file=None, md5=None):
     save_file = os.path.join(path, save_file)
 
     if not os.path.exists(save_file) or compute_md5(save_file) != md5:
-        logger.info("Downloading %s to %s" % (url, save_file))
+        logger.info(f"Downloading {url} to {save_file}")
         urlretrieve(url, save_file)
     return save_file
 
@@ -45,7 +45,7 @@ def extract(zip_file, member=None):
 
     zip_name, extension = os.path.splitext(zip_file)
     if zip_name.endswith(".tar"):
-        extension = ".tar" + extension
+        extension = f".tar{extension}"
         zip_name = zip_name[:-4]
 
     if member is None:
@@ -56,9 +56,9 @@ def extract(zip_file, member=None):
         return save_file
 
     if member is None:
-        logger.info("Extracting %s to %s" % (zip_file, save_file))
+        logger.info(f"Extracting {zip_file} to {save_file}")
     else:
-        logger.info("Extracting %s from %s to %s" % (member, zip_file, save_file))
+        logger.info(f"Extracting {member} from {zip_file} to {save_file}")
 
     if extension == ".gz":
         with gzip.open(zip_file, "rb") as fin, open(save_file, "wb") as fout:
@@ -78,7 +78,7 @@ def extract(zip_file, member=None):
             with zipfile.ZipFile(zip_file).open(member, "r") as fin, open(save_file, "wb") as fout:
                 shutil.copyfileobj(fin, fout)
     else:
-        raise ValueError("Unknown file extension `%s`" % extension)
+        raise ValueError(f"Unknown file extension `{extension}`")
 
     return save_file
 
@@ -95,10 +95,8 @@ def compute_md5(file_name, chunk_size=65536):
 
     md5 = hashlib.md5()
     with open(file_name, "rb") as fin:
-        chunk = fin.read(chunk_size)
-        while chunk:
+        while chunk := fin.read(chunk_size):
             md5.update(chunk)
-            chunk = fin.read(chunk_size)
     return md5.hexdigest()
 
 
@@ -112,8 +110,6 @@ def get_line_count(file_name, chunk_size=8192*1024):
     """
     count = 0
     with open(file_name, "rb") as fin:
-        chunk = fin.read(chunk_size)
-        while chunk:
+        while chunk := fin.read(chunk_size):
             count += chunk.count(b"\n")
-            chunk = fin.read(chunk_size)
     return count

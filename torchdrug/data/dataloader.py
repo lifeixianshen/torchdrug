@@ -20,7 +20,7 @@ def graph_collate(batch):
     if isinstance(elem, torch.Tensor):
         out = None
         if torch.utils.data.get_worker_info() is not None:
-            numel = sum([x.numel() for x in batch])
+            numel = sum(x.numel() for x in batch)
             storage = elem.storage()._new_shared(numel)
             out = elem.new(storage)
         return torch.stack(batch, 0, out=out)
@@ -37,11 +37,11 @@ def graph_collate(batch):
     elif isinstance(elem, Sequence):
         it = iter(batch)
         elem_size = len(next(it))
-        if not all(len(elem) == elem_size for elem in it):
+        if any(len(elem) != elem_size for elem in it):
             raise RuntimeError('Each element in list of batch should be of equal size')
         return [graph_collate(samples) for samples in zip(*batch)]
 
-    raise TypeError("Can't collate data with type `%s`" % type(elem))
+    raise TypeError(f"Can't collate data with type `{type(elem)}`")
 
 
 class DataLoader(torch.utils.data.DataLoader):

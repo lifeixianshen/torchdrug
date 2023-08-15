@@ -40,7 +40,7 @@ class Hetionet(data.KnowledgeGraphDataset):
 
         txt_files = []
         for url, md5 in zip(self.urls, self.md5s):
-            save_file = "hetionet_%s.txt" % os.path.splitext(os.path.basename(url))[0]
+            save_file = f"hetionet_{os.path.splitext(os.path.basename(url))[0]}.txt"
             txt_file = utils.download(url, self.path, save_file=save_file, md5=md5)
             txt_files.append(txt_file)
 

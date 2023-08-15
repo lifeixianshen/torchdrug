@@ -81,11 +81,11 @@ class WandbLogger(ConsoleLogger):
 
         self.run.define_metric("train/batch/*", step_metric="batch", summary="none")
         for split in ["train", "valid", "test"]:
-            self.run.define_metric("%s/epoch/*" % split, step_metric="epoch")
+            self.run.define_metric(f"{split}/epoch/*", step_metric="epoch")
 
     def log(self, record, step_id, category="train/batch"):
         super(WandbLogger, self).log(record, step_id, category)
-        record = {"%s/%s" % (category, k): v for k, v in record.items()}
+        record = {f"{category}/{k}": v for k, v in record.items()}
         step_name = category.split("/")[-1]
         record[step_name] = step_id
         self.run.log(record)

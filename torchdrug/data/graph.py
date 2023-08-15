@@ -125,10 +125,7 @@ class Graph(core._MetaContainer):
                     raise TypeError("Can't convert `edge_list` to torch.long")
         else:
             num_element = 2 if num_relation is None else 3
-            if isinstance(edge_list, torch.Tensor):
-                device = edge_list.device
-            else:
-                device = "cpu"
+            device = edge_list.device if isinstance(edge_list, torch.Tensor) else "cpu"
             edge_list = torch.zeros(0, num_element, dtype=torch.long, device=device)
         if (edge_list < 0).any():
             raise ValueError("`edge_list` should only contain non-negative indexes")
@@ -163,10 +160,7 @@ class Graph(core._MetaContainer):
     def _maybe_num_node(self, edge_list):
         warnings.warn("_maybe_num_node() is used to determine the number of nodes. "
                       "This may underestimate the count if there are isolated nodes.")
-        if len(edge_list):
-            return edge_list[:, :2].max().item() + 1
-        else:
-            return 0
+        return edge_list[:, :2].max().item() + 1 if len(edge_list) else 0
 
     def _maybe_num_relation(self, edge_list):
         warnings.warn("_maybe_num_relation() is used to determine the number of relations. "
@@ -469,7 +463,7 @@ class Graph(core._MetaContainer):
         if len(index) > 2:
             raise ValueError("Graph has only 2 axis, but %d axis is indexed" % len(index))
 
-        if all([isinstance(axis_index, int) for axis_index in index]):
+        if all(isinstance(axis_index, int) for axis_index in index):
             return self.get_edge(index)
 
         edge_list = self.edge_list.clone()
@@ -734,9 +728,7 @@ class Graph(core._MetaContainer):
             size = torch.Size((self.num_node, self.num_node, self.num_relation))
         else:
             size = torch.Size((self.num_node, self.num_node))
-        if dim is None:
-            return size
-        return size[dim]
+        return size if dim is None else size[dim]
 
     @property
     def shape(self):
@@ -825,8 +817,8 @@ class Graph(core._MetaContainer):
         if self.num_relation is not None:
             fields.append("num_relation=%d" % self.num_relation)
         if self.device.type != "cpu":
-            fields.append("device='%s'" % self.device)
-        return "%s(%s)" % (self.__class__.__name__, ", ".join(fields))
+            fields.append(f"device='{self.device}'")
+        return f'{self.__class__.__name__}({", ".join(fields)})'
 
     def visualize(self, title=None, save_file=None, figure_size=(3, 3), ax=None, layout="spring"):
         """
@@ -849,24 +841,18 @@ class Graph(core._MetaContainer):
         is_root = ax is None
         if ax is None:
             fig = plt.figure(figsize=figure_size)
-            if title is not None:
-                ax = plt.gca()
-            else:
-                ax = fig.add_axes([0, 0, 1, 1])
+            ax = plt.gca() if title is not None else fig.add_axes([0, 0, 1, 1])
         if title is not None:
             ax.set_title(title)
 
         edge_list = self.edge_list[:, :2].tolist()
         G = nx.DiGraph(edge_list)
         G.add_nodes_from(range(self.num_node))
-        if hasattr(nx, "%s_layout" % layout):
-            func = getattr(nx, "%s_layout" % layout)
+        if hasattr(nx, f"{layout}_layout"):
+            func = getattr(nx, f"{layout}_layout")
         else:
-            raise ValueError("Unknown networkx layout `%s`" % layout)
-        if layout == "spring" or layout == "random":
-            pos = func(G, seed=0)
-        else:
-            pos = func(G)
+            raise ValueError(f"Unknown networkx layout `{layout}`")
+        pos = func(G, seed=0) if layout in ["spring", "random"] else func(G)
         nx.draw_networkx(G, pos, ax=ax)
         if self.num_relation:
             edge_labels = self.edge_list[:, 2].tolist()
@@ -981,10 +967,7 @@ class PackedGraph(Graph):
         Returns:
             list of Graph
         """
-        graphs = []
-        for i in range(self.batch_size):
-            graphs.append(self.get_item(i))
-        return graphs
+        return [self.get_item(i) for i in range(self.batch_size)]
 
     def __iter__(self):
         self._iter_index = 0
@@ -1034,11 +1017,10 @@ class PackedGraph(Graph):
                 raise ValueError("Graph has %d nodes and %d edges, but data has %d entries" %
                                  (self.num_node, self.num_edge, len(data)))
         data_list = []
-        if type == "node":
-            for i in range(self.batch_size):
+        for i in range(self.batch_size):
+            if type == "node":
                 data_list.append(data[self.num_cum_nodes[i] - self.num_nodes[i]: self.num_cum_nodes[i]])
-        elif type == "edge":
-            for i in range(self.batch_size):
+            elif type == "edge":
                 data_list.append(data[self.num_cum_edges[i] - self.num_edges[i]: self.num_cum_edges[i]])
 
         return data_list
@@ -1149,9 +1131,14 @@ class PackedGraph(Graph):
         edge_list[:, :2] -= self._offsets[edge_index].unsqueeze(-1)
         data_dict, meta_dict = self.data_mask(node_index, edge_index, graph_index)
 
-        graph = self.unpacked_type(edge_list, edge_weight=self.edge_weight[edge_index], num_node=self.num_nodes[index],
-                                   num_relation=self.num_relation, meta_dict=meta_dict, **data_dict)
-        return graph
+        return self.unpacked_type(
+            edge_list,
+            edge_weight=self.edge_weight[edge_index],
+            num_node=self.num_nodes[index],
+            num_relation=self.num_relation,
+            meta_dict=meta_dict,
+            **data_dict
+        )
 
     def _get_cumulative(self, edge_list, num_nodes, num_edges, offsets):
         if edge_list is None:
@@ -1173,9 +1160,12 @@ class PackedGraph(Graph):
             _edge_list = edge_list.clone()
             _edge_list[:, :2] -= offsets.unsqueeze(-1)
         if num_nodes is None:
-            num_nodes = []
-            for num_edge, num_cum_edge in zip(num_edges, num_cum_edges):
-                num_nodes.append(self._maybe_num_node(_edge_list[num_cum_edge - num_edge: num_cum_edge]))
+            num_nodes = [
+                self._maybe_num_node(
+                    _edge_list[num_cum_edge - num_edge : num_cum_edge]
+                )
+                for num_edge, num_cum_edge in zip(num_edges, num_cum_edges)
+            ]
         num_nodes = torch.as_tensor(num_nodes, device=edge_list.device)
         num_cum_nodes = num_nodes.cumsum(0)
 
@@ -1188,8 +1178,7 @@ class PackedGraph(Graph):
         num_cum_indexes = torch.cat([torch.zeros(1, dtype=torch.long, device=self.device), num_cum_indexes])
         new_num_cum_xs = num_cum_indexes[num_cum_xs]
         new_num_cum_xs_shifted = torch.cat([torch.zeros(1, dtype=torch.long, device=self.device), new_num_cum_xs[:-1]])
-        new_num_xs = new_num_cum_xs - new_num_cum_xs_shifted
-        return new_num_xs
+        return new_num_cum_xs - new_num_cum_xs_shifted
 
     def data_mask(self, node_index=None, edge_index=None, graph_index=None, include=None, exclude=None):
         data_dict, meta_dict = self.data_by_meta(include, exclude)
@@ -1250,15 +1239,13 @@ class PackedGraph(Graph):
     def node2graph(self):
         """Node id to graph id mapping."""
         range = torch.arange(self.batch_size, device=self.device)
-        node2graph = range.repeat_interleave(self.num_nodes)
-        return node2graph
+        return range.repeat_interleave(self.num_nodes)
 
     @utils.cached_property
     def edge2graph(self):
         """Edge id to graph id mapping."""
         range = torch.arange(self.batch_size, device=self.device)
-        edge2graph = range.repeat_interleave(self.num_edges)
-        return edge2graph
+        return range.repeat_interleave(self.num_edges)
 
     @property
     def batch_size(self):
@@ -1464,14 +1451,16 @@ class PackedGraph(Graph):
                               offsets=self._offsets, meta_dict=self.meta_dict, **utils.cpu(self.data_dict))
 
     def __repr__(self):
-        fields = ["batch_size=%d" % self.batch_size,
-                  "num_nodes=%s" % pretty.long_array(self.num_nodes.tolist()),
-                  "num_edges=%s" % pretty.long_array(self.num_edges.tolist())]
+        fields = [
+            "batch_size=%d" % self.batch_size,
+            f"num_nodes={pretty.long_array(self.num_nodes.tolist())}",
+            f"num_edges={pretty.long_array(self.num_edges.tolist())}",
+        ]
         if self.num_relation is not None:
             fields.append("num_relation=%d" % self.num_relation)
         if self.device.type != "cpu":
-            fields.append("device='%s'" % self.device)
-        return "%s(%s)" % (self.__class__.__name__, ", ".join(fields))
+            fields.append(f"device='{self.device}'")
+        return f'{self.__class__.__name__}({", ".join(fields)})'
 
     def visualize(self, titles=None, save_file=None, figure_size=(3, 3), layout="spring", num_row=None, num_col=None):
         """
@@ -1552,10 +1541,9 @@ def cat(graphs):
         keys = keys.intersection(graph.meta_dict.keys())
 
     meta_dict = {k: graphs[0].meta_dict[k] for k in keys}
-    data_dict = {}
-    for k in keys:
-        data_dict[k] = torch.cat([graph.data_dict[k] for graph in graphs])
-
+    data_dict = {
+        k: torch.cat([graph.data_dict[k] for graph in graphs]) for k in keys
+    }
     return type(graphs[0])(edge_list, edge_weight=edge_weight,
                            num_nodes=num_nodes, num_edges=num_edges, num_relation=num_relation, offsets=offsets,
                            meta_dict=meta_dict, **data_dict)

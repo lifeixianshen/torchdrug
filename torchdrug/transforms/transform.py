@@ -25,7 +25,7 @@ class TargetNormalize(object):
             if k in item:
                 item[k] = (item[k] - self.mean[k]) / self.std[k]
             else:
-                raise ValueError("Can't find target `%s` in data item" % k)
+                raise ValueError(f"Can't find target `{k}` in data item")
         return item
 
 
@@ -108,10 +108,7 @@ class Shuffle(object):
             node_perm = torch.randperm(num_node, device=edge_list.device)
         else:
             node_perm = torch.arange(num_node, device=edge_list.device)
-        if self.shuffle_edge:
-            edge_perm = torch.randperm(num_edge, device=edge_list.device)
-        else:
-            edge_perm = torch.randperm(num_edge, device=edge_list.device)
+        edge_perm = torch.randperm(num_edge, device=edge_list.device)
         new_data = {}
         for key in data:
             if meta[key] == "node":
@@ -175,13 +172,7 @@ class VirtualNode(object):
         # add default node/edge attributes
         data = graph.data_dict.copy()
         for key, value in graph.meta.items():
-            if value == "node":
-                if key in self.default:
-                    new_data = self.default[key].unsqueeze(0)
-                else:
-                    new_data = torch.zeros(1, *data[key].shape[1:], dtype=data[key].dtype, device=data[key].device)
-                data[key] = torch.cat([data[key], new_data])
-            elif value == "edge":
+            if value == "edge":
                 if key in self.default:
                     repeat = [-1] * (data[key].ndim - 1)
                     new_data = self.default[key].expand(num_node * 2, *repeat)
@@ -190,6 +181,18 @@ class VirtualNode(object):
                                            dtype=data[key].dtype, device=data[key].device)
                 data[key] = torch.cat([data[key], new_data])
 
+            elif value == "node":
+                new_data = (
+                    self.default[key].unsqueeze(0)
+                    if key in self.default
+                    else torch.zeros(
+                        1,
+                        *data[key].shape[1:],
+                        dtype=data[key].dtype,
+                        device=data[key].device
+                    )
+                )
+                data[key] = torch.cat([data[key], new_data])
         graph = type(graph)(edge_list, edge_weight=edge_weight, num_node=num_node + 1,
                             num_relation=num_relation, meta=graph.meta, **data)
 

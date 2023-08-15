@@ -46,7 +46,13 @@ class OPV(data.MoleculeDataset):
         with open(csv_file, "r") as fin:
             reader = csv.reader(fin)
             if verbose:
-                reader = iter(tqdm(reader, "Loading %s" % csv_file, utils.get_line_count(csv_file)))
+                reader = iter(
+                    tqdm(
+                        reader,
+                        f"Loading {csv_file}",
+                        utils.get_line_count(csv_file),
+                    )
+                )
             fields = next(reader)
             smiles = []
             targets = defaultdict(list)

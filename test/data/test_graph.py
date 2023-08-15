@@ -37,14 +37,25 @@ class GraphTest(unittest.TestCase):
         return result
 
     def assert_equal(self, graph1, graph2, prompt):
-        self.assertTrue(torch.equal(graph1.adjacency.to_dense(), graph2.adjacency.to_dense()),
-                        "Incorrect edge list in %s" % prompt)
+        self.assertTrue(
+            torch.equal(graph1.adjacency.to_dense(), graph2.adjacency.to_dense()),
+            f"Incorrect edge list in {prompt}",
+        )
         if hasattr(graph1, "node_feature") and hasattr(graph2, "node_feature"):
-            self.assertTrue(torch.equal(graph1.node_feature, graph2.node_feature), "Incorrect feature in %s" % prompt)
+            self.assertTrue(
+                torch.equal(graph1.node_feature, graph2.node_feature),
+                f"Incorrect feature in {prompt}",
+            )
         if hasattr(graph1, "edge_feature") and hasattr(graph2, "edge_feature"):
-            self.assertTrue(torch.equal(graph1.edge_feature, graph2.edge_feature), "Incorrect feature in %s" % prompt)
+            self.assertTrue(
+                torch.equal(graph1.edge_feature, graph2.edge_feature),
+                f"Incorrect feature in {prompt}",
+            )
         if hasattr(graph1, "graph_feature") and hasattr(graph2, "graph_feature"):
-            self.assertTrue(torch.equal(graph1.graph_feature, graph2.graph_feature), "Incorrect feature in %s" % prompt)
+            self.assertTrue(
+                torch.equal(graph1.graph_feature, graph2.graph_feature),
+                f"Incorrect feature in {prompt}",
+            )
 
     def test_type_cast(self):
         dense_edge_feature = torch.zeros(self.num_node, self.num_node, self.num_feature)

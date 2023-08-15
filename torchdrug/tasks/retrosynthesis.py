@@ -57,16 +57,16 @@ class CenterIdentification(tasks.Task, core.Configurable):
         edge_dim = 0
         graph_dim = 0
         for _feature in sorted(self.feature):
-            if _feature == "reaction":
-                graph_dim += self.num_reaction
-            elif _feature == "graph":
-                graph_dim += self.model.output_dim
-            elif _feature == "atom":
+            if _feature == "atom":
                 node_dim += node_feature_dim
             elif _feature == "bond":
                 edge_dim += edge_feature_dim
+            elif _feature == "graph":
+                graph_dim += self.model.output_dim
+            elif _feature == "reaction":
+                graph_dim += self.num_reaction
             else:
-                raise ValueError("Unknown feature `%s`" % _feature)
+                raise ValueError(f"Unknown feature `{_feature}`")
 
         node_dim += graph_dim # inherit graph features
         edge_dim += node_dim * 2 # inherit node features
@@ -82,7 +82,7 @@ class CenterIdentification(tasks.Task, core.Configurable):
 
         pred = self.predict(batch, all_loss, metric)
         target = self.target(batch)
-        metric.update(self.evaluate(pred, target))
+        metric |= self.evaluate(pred, target)
 
         target, size = target
         target = functional.variadic_max(target, size)[1]
@@ -125,18 +125,18 @@ class CenterIdentification(tasks.Task, core.Configurable):
         edge_feature = []
         graph_feature = []
         for _feature in sorted(self.feature):
-            if _feature == "reaction":
-                reaction_feature = torch.zeros(len(graph), self.num_reaction, dtype=torch.float32, device=self.device)
-                reaction_feature.scatter_(1, batch["reaction"].unsqueeze(-1), 1)
-                graph_feature.append(reaction_feature)
-            elif _feature == "graph":
-                graph_feature.append(output["graph_feature"])
-            elif _feature == "atom":
+            if _feature == "atom":
                 node_feature.append(graph.node_feature.float())
             elif _feature == "bond":
                 edge_feature.append(graph.edge_feature.float())
+            elif _feature == "graph":
+                graph_feature.append(output["graph_feature"])
+            elif _feature == "reaction":
+                reaction_feature = torch.zeros(len(graph), self.num_reaction, dtype=torch.float32, device=self.device)
+                reaction_feature.scatter_(1, batch["reaction"].unsqueeze(-1), 1)
+                graph_feature.append(reaction_feature)
             else:
-                raise ValueError("Unknown feature `%s`" % _feature)
+                raise ValueError(f"Unknown feature `{_feature}`")
 
         graph_feature = torch.cat(graph_feature, dim=-1)
         # inherit graph features
@@ -145,25 +145,20 @@ class CenterIdentification(tasks.Task, core.Configurable):
         # inherit node features
         edge_feature.append(node_feature[graph.edge_list[:, :2]].flatten(1))
         edge_feature = torch.cat(edge_feature, dim=-1)
-        
+
         edge_pred = self.edge_mlp(edge_feature).squeeze(-1)
         node_pred = self.node_mlp(node_feature).squeeze(-1)
 
-        pred = self._collate(edge_pred, node_pred, graph)
-
-        return pred
+        return self._collate(edge_pred, node_pred, graph)
 
     def evaluate(self, pred, target):
         target, size = target
 
-        metric = {}
         target = functional.variadic_max(target, size)[1]
         accuracy = metrics.variadic_accuracy(pred, target, size).mean()
 
         name = tasks._get_metric_name("acc")
-        metric[name] = accuracy
-
-        return metric
+        return {name: accuracy}
 
     @torch.no_grad()
     def predict_synthon(self, batch, k=1):
@@ -222,15 +217,13 @@ class CenterIdentification(tasks.Task, core.Configurable):
         synthon, num_synthon = graph.connected_components()
         synthon = synthon.undirected() # (< num_graph * k)
 
-        result = {
+        return {
             "synthon": synthon,
             "num_synthon": num_synthon,
             "reaction_center": reaction_center,
             "log_likelihood": logp,
             "reaction": reaction,
         }
-
-        return result
 
 
 class RandomBFSOrder(object):
@@ -344,24 +337,21 @@ class SynthonCompletion(tasks.Task, core.Configurable):
         sig = inspect.signature(data.PackedMolecule.from_molecule)
         keys = set(sig.parameters.keys())
         kwargs = dataset.config_dict()
-        feature_kwargs = {}
-        for k, v in kwargs.items():
-            if k in keys:
-                feature_kwargs[k] = v
+        feature_kwargs = {k: v for k, v in kwargs.items() if k in keys}
         self.feature_kwargs = feature_kwargs
 
         node_dim = self.model.output_dim
         edge_dim = 0
         graph_dim = 0
         for _feature in sorted(self.feature):
-            if _feature == "reaction":
-                graph_dim += self.num_reaction
+            if _feature == "atom":
+                node_dim += node_feature_dim
             elif _feature == "graph":
                 graph_dim += self.model.output_dim
-            elif _feature == "atom":
-                node_dim += node_feature_dim
+            elif _feature == "reaction":
+                graph_dim += self.num_reaction
             else:
-                raise ValueError("Unknown feature `%s`" % _feature)
+                raise ValueError(f"Unknown feature `{_feature}`")
 
         self.new_atom_feature = nn.Embedding(self.num_atom_type, node_dim)
 
@@ -614,7 +604,7 @@ class SynthonCompletion(tasks.Task, core.Configurable):
         all_loss += loss
 
         metric["total loss"] = all_loss
-        metric.update(self.evaluate(pred, target))
+        metric |= self.evaluate(pred, target)
 
         return all_loss, metric
 
@@ -622,12 +612,9 @@ class SynthonCompletion(tasks.Task, core.Configurable):
         node_in_pred, node_out_pred, bond_pred, stop_pred = pred
         node_in_target, node_out_target, bond_target, stop_target, size = target
 
-        metric = {}
-
         node_in_acc = metrics.variadic_accuracy(node_in_pred, node_in_target, size)
         accuracy = functional.masked_mean(node_in_acc, stop_target == 0)
-        metric["node in accuracy"] = accuracy
-
+        metric = {"node in accuracy": accuracy}
         node_out_acc = metrics.variadic_accuracy(node_out_pred, node_out_target, size)
         accuracy = functional.masked_mean(node_out_acc, stop_target == 0)
         metric["node out accuracy"] = accuracy
@@ -674,10 +661,9 @@ class SynthonCompletion(tasks.Task, core.Configurable):
             keys = keys.intersection(graph.meta_dict.keys())
 
         meta_dict = {k: graphs[0].meta_dict[k] for k in keys}
-        data_dict = {}
-        for k in keys:
-            data_dict[k] = torch.cat([graph.data_dict[k] for graph in graphs])
-
+        data_dict = {
+            k: torch.cat([graph.data_dict[k] for graph in graphs]) for k in keys
+        }
         return type(graphs[0])(edge_list, edge_weight=edge_weight,
                                num_nodes=num_nodes, num_edges=num_edges, num_relation=num_relation, offsets=offsets,
                                meta_dict=meta_dict, **data_dict)
@@ -706,16 +692,16 @@ class SynthonCompletion(tasks.Task, core.Configurable):
         node_feature = [output["node_feature"]]
         graph_feature = []
         for _feature in sorted(self.feature):
-            if _feature == "reaction":
+            if _feature == "atom":
+                node_feature.append(graph.node_feature.float())
+            elif _feature == "graph":
+                graph_feature.append(output["graph_feature"])
+            elif _feature == "reaction":
                 reaction_feature = torch.zeros(len(graph), self.num_reaction, dtype=torch.float32, device=self.device)
                 reaction_feature.scatter_(1, graph.reaction.unsqueeze(-1), 1)
                 graph_feature.append(reaction_feature)
-            elif _feature == "graph":
-                graph_feature.append(output["graph_feature"])
-            elif _feature == "atom":
-                node_feature.append(graph.node_feature.float())
             else:
-                raise ValueError("Unknown feature `%s`" % _feature)
+                raise ValueError(f"Unknown feature `{_feature}`")
 
         graph_feature = torch.cat(graph_feature, dim=-1)
         # inherit graph features
@@ -1001,16 +987,16 @@ class SynthonCompletion(tasks.Task, core.Configurable):
         node_feature = [output["node_feature"]]
         graph_feature = []
         for _feature in sorted(self.feature):
-            if _feature == "reaction":
+            if _feature == "atom":
+                node_feature.append(graph.node_feature)
+            elif _feature == "graph":
+                graph_feature.append(output["graph_feature"])
+            elif _feature == "reaction":
                 reaction_feature = torch.zeros(len(graph), self.num_reaction, dtype=torch.float32, device=self.device)
                 reaction_feature.scatter_(1, graph.reaction.unsqueeze(-1), 1)
                 graph_feature.append(reaction_feature)
-            elif _feature == "graph":
-                graph_feature.append(output["graph_feature"])
-            elif _feature == "atom":
-                node_feature.append(graph.node_feature)
             else:
-                raise ValueError("Unknown feature `%s`" % _feature)
+                raise ValueError(f"Unknown feature `{_feature}`")
 
         graph_feature = torch.cat(graph_feature, dim=-1)
         # inherit graph features
@@ -1047,7 +1033,7 @@ class SynthonCompletion(tasks.Task, core.Configurable):
         node_out_pred[node_in] = -infinity
 
         return (node_in_pred, node_out_pred, bond_pred, stop_pred), \
-               (node_in_target, node_out_target, bond_target, stop_target, size_ext)
+                   (node_in_target, node_out_target, bond_target, stop_target, size_ext)
 
 
 @R.register("tasks.Retrosynthesis")
@@ -1100,18 +1086,14 @@ class Retrosynthesis(tasks.Task, core.Configurable):
 
         reactant = self.synthon_completion.predict_reactant(synthon_batch, self.num_synthon_beam, self.max_prediction)
 
-        logps = []
-        reactant_ids = []
-        product_ids = []
-
         # case 1: one synthon
         is_single = num_synthon[synthon2split[reactant.synthon_id]] == 1
         reactant_id = is_single.nonzero().squeeze(-1)
-        logps.append(reactant.split_logp[reactant_id] + reactant.logp[reactant_id])
-        product_ids.append(reactant.product_id[reactant_id])
-        # pad -1
-        reactant_ids.append(torch.stack([reactant_id, -torch.ones_like(reactant_id)], dim=-1))
-
+        logps = [reactant.split_logp[reactant_id] + reactant.logp[reactant_id]]
+        product_ids = [reactant.product_id[reactant_id]]
+        reactant_ids = [
+            torch.stack([reactant_id, -torch.ones_like(reactant_id)], dim=-1)
+        ]
         # case 2: two synthons
         # use proposal to avoid O(n^2) complexity
         reactant1 = torch.arange(len(reactant), device=self.device)
@@ -1174,8 +1156,7 @@ class Retrosynthesis(tasks.Task, core.Configurable):
 
     def target(self, batch):
         reactant, product = batch["graph"]
-        reactant = reactant.ion_to_molecule()
-        return reactant
+        return reactant.ion_to_molecule()
 
     def evaluate(self, pred, target):
         pred, num_prediction = pred
@@ -1203,6 +1184,6 @@ class Retrosynthesis(tasks.Task, core.Configurable):
                 score = (ranking <= threshold).float().mean()
                 metric["top-%d accuracy" % threshold] = score
             else:
-                raise ValueError("Unknown metric `%s`" % _metric)
+                raise ValueError(f"Unknown metric `{_metric}`")
 
         return metric

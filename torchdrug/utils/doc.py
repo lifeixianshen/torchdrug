@@ -24,16 +24,13 @@ def copy_args(obj, args=None, ignore=None):
             return []
         begin = match.end()
         indent = re.search(r"\s+", doc[begin:]).group()
-        match = re.search(r"^(?!%s)" % indent, doc[begin:])
-        if match:
-            end = begin + match.start()
-        else:
-            end = None
+        match = re.search(f"^(?!{indent})", doc[begin:])
+        end = begin + match.start() if match else None
         param_docs = []
         pattern = r"^%s\S.*(?:\n%s\s+\S.*)*" % (indent, indent)
         for match in re.finditer(pattern, doc[begin:end], re.MULTILINE):
             doc = match.group()
-            doc = re.sub("^%s" % indent, "", doc, re.MULTILINE) # remove indent
+            doc = re.sub(f"^{indent}", "", doc, re.MULTILINE)
             param_docs.append(doc)
 
         return param_docs
@@ -49,7 +46,7 @@ def copy_args(obj, args=None, ignore=None):
                     indent = match.group(1)
             param_docs = [re.sub("^", indent, doc, re.MULTILINE) for doc in param_docs]  # add indent
             param_docs = "\n".join(param_docs)
-            doc = "\n".join([doc, "%sParameters" % indent, param_docs])
+            doc = "\n".join([doc, f"{indent}Parameters", param_docs])
         else:
             begin = match.end()
             indent = re.search(r"\s*", doc[begin:]).group()
@@ -84,7 +81,7 @@ def copy_args(obj, args=None, ignore=None):
     def wrapper(obj):
         sig = get_signature(obj)
         parameters = list(sig.parameters.values())
-        if parameters[0].name == "cls" or parameters[0].name == "self":
+        if parameters[0].name in ["cls", "self"]:
             parameters.pop(0)
         docs = get_param_docs(obj)
         if len(docs) != len(parameters):
@@ -124,7 +121,7 @@ def copy_args(obj, args=None, ignore=None):
 
     sig = get_signature(from_obj)
     parameters = list(sig.parameters.values())
-    if parameters[0].name == "cls" or parameters[0].name == "self":
+    if parameters[0].name in ["cls", "self"]:
         parameters.pop(0)
     from_args = []
     from_kwargs = []

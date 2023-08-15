@@ -31,7 +31,7 @@ class ChEMBLFiltered(data.MoleculeDataset):
         zip_file = utils.download(self.url, path, md5=self.md5)
         csv_file = utils.extract(zip_file)
 
-        self.target_fields = ["target_{}".format(i) for i in range(1310)]
+        self.target_fields = [f"target_{i}" for i in range(1310)]
 
         self.load_csv(csv_file, smiles_field="smiles", target_fields=self.target_fields,
                       verbose=verbose, **kwargs)

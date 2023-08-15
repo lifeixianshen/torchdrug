@@ -47,7 +47,7 @@ class GraphConvolutionalNetwork(nn.Module, core.Configurable):
         elif readout == "mean":
             self.readout = layers.MeanReadout()
         else:
-            raise ValueError("Unknown readout `%s`" % readout)
+            raise ValueError(f"Unknown readout `{readout}`")
 
     def forward(self, graph, input, all_loss=None, metric=None):
         """
@@ -128,7 +128,7 @@ class RelationalGraphConvolutionalNetwork(nn.Module, core.Configurable):
         elif readout == "mean":
             self.readout = layers.MeanReadout()
         else:
-            raise ValueError("Unknown readout `%s`" % readout)
+            raise ValueError(f"Unknown readout `{readout}`")
 
     def forward(self, graph, input, all_loss=None, metric=None):
         """

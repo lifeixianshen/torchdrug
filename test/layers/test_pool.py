@@ -15,7 +15,7 @@ class GraphPoolTest(unittest.TestCase):
         self.output_dim = 8
         self.output_node = 6
         self.graphs = []
-        for i in range(self.num_graph):
+        for _ in range(self.num_graph):
             adjacency = torch.rand(self.num_node, self.num_node)
             threshold = adjacency.flatten().kthvalue((self.num_node - 3) * self.num_node)[0]
             adjacency = adjacency * (adjacency > threshold)

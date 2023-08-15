@@ -32,5 +32,5 @@ def long_array(array, truncation=10, display=3):
         display (int, optional): number of elements to display at the beginning and the end in truncated mode
     """
     if len(array) <= truncation:
-        return "%s" % array
-    return "%s, ..., %s" % (str(array[:display])[:-1], str(array[-display:])[1:])
+        return f"{array}"
+    return f"{str(array[:display])[:-1]}, ..., {str(array[-display:])[1:]}"

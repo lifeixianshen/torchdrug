@@ -25,13 +25,11 @@ _metric_name = {
 def _get_criterion_name(criterion):
     if criterion in _criterion_name:
         return _criterion_name[criterion]
-    return "%s loss" % criterion
+    return f"{criterion} loss"
 
 
 def _get_metric_name(metric):
-    if metric in _metric_name:
-        return _metric_name[metric]
-    return metric
+    return _metric_name[metric] if metric in _metric_name else metric
 
 
 __all__ = [

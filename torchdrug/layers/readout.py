@@ -17,8 +17,7 @@ class MeanReadout(nn.Module):
         Returns:
             Tensor: graph representations
         """
-        output = scatter_mean(input, graph.node2graph, dim=0, dim_size=graph.batch_size)
-        return output
+        return scatter_mean(input, graph.node2graph, dim=0, dim_size=graph.batch_size)
 
 
 class SumReadout(nn.Module):
@@ -35,8 +34,7 @@ class SumReadout(nn.Module):
         Returns:
             Tensor: graph representations
         """
-        output = scatter_add(input, graph.node2graph, dim=0, dim_size=graph.batch_size)
-        return output
+        return scatter_add(input, graph.node2graph, dim=0, dim_size=graph.batch_size)
 
 
 class MaxReadout(nn.Module):
@@ -53,8 +51,9 @@ class MaxReadout(nn.Module):
         Returns:
             Tensor: graph representations
         """
-        output = scatter_max(input, graph.node2graph, dim=0, dim_size=graph.batch_size)[0]
-        return output
+        return scatter_max(
+            input, graph.node2graph, dim=0, dim_size=graph.batch_size
+        )[0]
 
 
 class Softmax(nn.Module):
@@ -145,7 +144,7 @@ class Set2Set(nn.Module):
         hx = (torch.zeros(self.lstm.num_layers, graph.batch_size, self.lstm.hidden_size, device=input.device),) * 2
         query_star = torch.zeros(graph.batch_size, self.output_dim, device=input.device)
 
-        for i in range(self.num_step):
+        for _ in range(self.num_step):
             query, hx = self.lstm(query_star.unsqueeze(0), hx)
             query = query.squeeze(0)
             product = torch.einsum("bd, bd -> b", query[graph.node2graph], input)

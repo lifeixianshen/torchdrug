@@ -36,10 +36,9 @@ class ReduceTest(unittest.TestCase):
         event = self.ctx.Event()
 
         spawn_ctx = mp.spawn(worker, (comm.reduce, self.objs, queue, event), nprocs=self.num_worker, join=False)
-        truth = {}
-        truth["a"] = torch.stack([obj["a"] for obj in self.objs]).sum(dim=0)
+        truth = {"a": torch.stack([obj["a"] for obj in self.objs]).sum(dim=0)}
         truth["b"] = torch.stack([obj["b"] for obj in self.objs]).sum(dim=0)
-        for i in range(self.num_worker):
+        for _ in range(self.num_worker):
             rank, result = queue.get()
             self.assertTrue(torch.allclose(result["a"], truth["a"]), "Incorrect reduce operator")
             self.assertTrue(torch.allclose(result["b"], truth["b"]), "Incorrect reduce operator")
@@ -52,7 +51,7 @@ class ReduceTest(unittest.TestCase):
         truth = {}
         truth["a"] = torch.stack([obj["a"] for obj in self.objs])
         truth["b"] = torch.stack([obj["b"] for obj in self.objs])
-        for i in range(self.num_worker):
+        for _ in range(self.num_worker):
             rank, result = queue.get()
             self.assertTrue(torch.allclose(result["a"], truth["a"]), "Incorrect stack operator")
             self.assertTrue(torch.allclose(result["b"], truth["b"]), "Incorrect stack operator")
@@ -65,7 +64,7 @@ class ReduceTest(unittest.TestCase):
         truth = {}
         truth["a"] = torch.cat([obj["a"] for obj in self.asymmetric_objs])
         truth["b"] = torch.cat([obj["b"] for obj in self.asymmetric_objs])
-        for i in range(self.num_worker):
+        for _ in range(self.num_worker):
             rank, result = queue.get()
             self.assertTrue(torch.allclose(result["a"], truth["a"]), "Incorrect cat operator")
             self.assertTrue(torch.allclose(result["b"], truth["b"]), "Incorrect cat operator")

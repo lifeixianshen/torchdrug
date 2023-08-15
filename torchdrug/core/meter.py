@@ -88,19 +88,17 @@ class Meter(object):
         if self.silent:
             return
 
-        logger.warning("duration: %s" % pretty.time(duration))
+        logger.warning(f"duration: {pretty.time(duration)}")
         logger.warning("speed: %.2f batch / sec" % speed)
 
         eta = (self.time[-1] - self.time[self.start_epoch]) \
-              / (self.epoch_id - self.start_epoch) * (self.end_epoch - self.epoch_id)
-        logger.warning("ETA: %s" % pretty.time(eta))
+                  / (self.epoch_id - self.start_epoch) * (self.end_epoch - self.epoch_id)
+        logger.warning(f"ETA: {pretty.time(eta)}")
         if torch.cuda.is_available():
             logger.warning("max GPU memory: %.1f MiB" % (torch.cuda.max_memory_allocated() / 1e6))
             torch.cuda.reset_peak_memory_stats()
 
-        record = {}
-        for k, v in self.records.items():
-            record[k] = np.mean(v[index])
+        record = {k: np.mean(v[index]) for k, v in self.records.items()}
         self.log(record, category="train/epoch")
 
     def __call__(self, num_epoch):
